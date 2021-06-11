@@ -5,6 +5,97 @@ import imageio
 import time
 
 ################################################################################
+# --------- FONCTIONS ---------#
+
+def str_to_float_list(string):
+    L = string.split()
+    n = len(L)
+    for i in range(n):
+        L[i] = float(L[i])
+    return L
+
+
+def session_name():
+    t0 = time.time()
+    struct = time.localtime(t0)
+    string = str(struct.tm_year) + '-'
+    n_months = str(struct.tm_mon)  # MONTHS
+    if len(n_months) == 1:
+        n_months = '0' + n_months
+    string = string + n_months + '-'
+    n_days = str(struct.tm_mday)  # DAYS
+    if len(n_months) == 1:
+        n_days = '0' + n_days
+    string = string + n_days + '-'
+    n_hours = str(struct.tm_hour)  # HOURS
+    if len(n_hours) == 1:
+        n_hours = '0' + n_hours
+    string = string + n_hours + '-'
+    n_mins = str(struct.tm_min)  # MINUTES
+    if len(n_mins) == 1:
+        n_mins = '0' + n_mins
+    string = string + n_mins + '-'
+    n_secs = str(struct.tm_sec)  # SECONDS
+    if len(n_secs) == 1:
+        n_secs = '0' + n_secs
+    string = string + n_secs + '.txt'
+    return string
+
+
+def gravitational_constant():
+    return 4.302e-3  # pc(M_solar)^-1 (km/s)^2
+
+
+def particle_ring(N, radius, G, M):
+    particles = []
+    velocities = []
+    theta = 0
+    arclen = (2 * np.pi) / N
+    v = np.sqrt(G * M / radius)
+    while len(particles) < N:
+        angle = theta * arclen
+        beta = angle + np.pi / 2
+        theta += 1
+        particles.append([radius * np.cos(angle), radius * np.sin(angle)])
+        velocities.append([v * np.cos(beta), v * np.sin(beta)])
+    return np.array(particles), np.array(velocities)
+
+
+def velocity(X, G, M):
+    V = np.zeros_like(X)
+    R = np.sqrt(X[:, 0] ** 2 + X[:, 1] ** 2)
+    v = np.sqrt(G * M / R)
+    theta = np.arctan(X[:, 1] / X[:, 0])
+    beta = theta + np.pi / 2
+    V[:, 0] = v * np.cos(beta)
+    V[:, 1] = v * np.sin(beta)
+    return V
+
+
+def select_list(l, n):
+    m = len(l)
+    skip = int(m / n)
+    new_l = []
+    for i in range(m):
+        if i % skip == 0:
+            new_l.append(l[i])
+    return new_l
+
+
+def initial_trajectory(periapsis, eccentricity, true_anomaly, M):
+    theta = (2 * np.pi * true_anomaly) / 360
+    a = periapsis / (1 - eccentricity)
+    mu = gravitational_constant() * M
+    p = a * (1 - eccentricity ** 2)
+    h = np.sqrt(p * mu)
+    r = p / (1 + eccentricity * np.cos(theta))
+    X = np.array([r * np.cos(theta), r * np.sin(theta)])
+    V = np.array([-mu * np.sin(theta) / h, mu * (eccentricity + np.cos(theta)) / h])
+    return X, V
+
+
+
+################################################################################
 # --------- GALAXY RING 2D CLASS ---------#
 
 class GalaxyRing2D():
@@ -115,7 +206,6 @@ class MergerEngine():
         if galaxies is None:
             galaxies = []
         self.galaxies = galaxies
-        assert len(galaxies) > 1, "There needs to be more than 1 galaxy in the simulation. Current number : " + str(len(galaxies))
         self.G = gravitational_constant()
         # Massless Particles
         galaxies_X = [galaxy.X for galaxy in self.galaxies]
@@ -337,7 +427,7 @@ class Galaxy_Collision():
                 for i in range(self.n_galaxies):
                     gal = "GAL" + str(i)
                     file.write(gal + "MASS : " + str(self.galaxies[i].M) +
-                               " N" + gal + " : " + str(self.galaxies[i].particles) +
+                               " N" + gal + " : " + str(self.galaxies[i].particles) + " " +
                                gal + "HALOR : " + str(self.galaxies[i].halo_r) + ' \n')
             self.save_state()
         new_path = self.current_dir + "\\logs\\" + self.saves_file
@@ -415,93 +505,4 @@ class Galaxy_Collision():
             imageio.mimsave(gif_path, Images, fps=gif_fps)
             print("########## GIF FINISHED ##########")
 
-
-################################################################################
-# --------- FONCTIONS ---------#
-
-def str_to_float_list(string):
-    L = string.split()
-    n = len(L)
-    for i in range(n):
-        L[i] = float(L[i])
-    return L
-
-
-def session_name():
-    t0 = time.time()
-    struct = time.localtime(t0)
-    string = str(struct.tm_year) + '-'
-    n_months = str(struct.tm_mon)  # MONTHS
-    if len(n_months) == 1:
-        n_months = '0' + n_months
-    string = string + n_months + '-'
-    n_days = str(struct.tm_mday)  # DAYS
-    if len(n_months) == 1:
-        n_days = '0' + n_days
-    string = string + n_days + '-'
-    n_hours = str(struct.tm_hour)  # HOURS
-    if len(n_hours) == 1:
-        n_hours = '0' + n_hours
-    string = string + n_hours + '-'
-    n_mins = str(struct.tm_min)  # MINUTES
-    if len(n_mins) == 1:
-        n_mins = '0' + n_mins
-    string = string + n_mins + '-'
-    n_secs = str(struct.tm_sec)  # SECONDS
-    if len(n_secs) == 1:
-        n_secs = '0' + n_secs
-    string = string + n_secs + '.txt'
-    return string
-
-
-def gravitational_constant():
-    return 4.302e-3  # pc(M_solar)^-1 (km/s)^2
-
-
-def particle_ring(N, radius, G, M):
-    particles = []
-    velocities = []
-    theta = 0
-    arclen = (2 * np.pi) / N
-    v = np.sqrt(G * M / radius)
-    while len(particles) < N:
-        angle = theta * arclen
-        beta = angle + np.pi / 2
-        theta += 1
-        particles.append([radius * np.cos(angle), radius * np.sin(angle)])
-        velocities.append([v * np.cos(beta), v * np.sin(beta)])
-    return np.array(particles), np.array(velocities)
-
-
-def velocity(X, G, M):
-    V = np.zeros_like(X)
-    R = np.sqrt(X[:, 0] ** 2 + X[:, 1] ** 2)
-    v = np.sqrt(G * M / R)
-    theta = np.arctan(X[:, 1] / X[:, 0])
-    beta = theta + np.pi / 2
-    V[:, 0] = v * np.cos(beta)
-    V[:, 1] = v * np.sin(beta)
-    return V
-
-
-def select_list(l, n):
-    m = len(l)
-    skip = int(m / n)
-    new_l = []
-    for i in range(m):
-        if i % skip == 0:
-            new_l.append(l[i])
-    return new_l
-
-
-def initial_trajectory(periapsis, eccentricity, true_anomaly, M):
-    theta = (2 * np.pi * true_anomaly) / 360
-    a = periapsis / (1 - eccentricity)
-    mu = gravitational_constant() * M
-    p = a * (1 - eccentricity ** 2)
-    h = np.sqrt(p * mu)
-    r = p / (1 + eccentricity * np.cos(theta))
-    X = np.array([r * np.cos(theta), r * np.sin(theta)])
-    V = np.array([-mu * np.sin(theta) / h, mu * (eccentricity + np.cos(theta)) / h])
-    return X, V
 
