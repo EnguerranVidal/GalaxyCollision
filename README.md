@@ -58,8 +58,21 @@ The data can then displayed in a Matplotlib animation. The animation can be stor
 
 # CONTENTS
 This repository contains the following files :
-- **[main.py](https://github.com/EnguerranVidal/Galaxy-Collision/blob/main/main.py)** : contains an example runnable program which result in the creation of the top page animation of two galaxies colliding.
-- **[__galaxycollision.py](https://github.com/EnguerranVidal/Galaxy-Collision/blob/main/__galaxycollision.py)** : The main file containing the classes and fucntions used throughout the project. 
+- **[main.py](https://github.com/EnguerranVidal/Galaxy-Collision/blob/main/main.py)** : contains an runnable code resulting in the creation of the uncompressed top page animation of two galaxies colliding.
+- **[__galaxycollision.py](https://github.com/EnguerranVidal/Galaxy-Collision/blob/main/__galaxycollision.py)** : The main file containing the classes and functions used throughout the project. 
  
 
+# POSSIBLE UPDATES ?
+
+- The galaxies cannot, as of now, really "merg", this is due to the absence of a particle collision merg feature that could able us to fuse the multiple massive bodies when they get too close to one another. Since the main simulation class depends on the number of galaxies remaining constant, this feature could take a certain amount of time to implement. For now, the massive bodies simply get close and the least heavy is flung out of the system.
+
+- The created GIF from the Galaxy_Collision.display() method is for now uncompressed and can therefore become quite heavy, we will try to implement a compressing function later on to ease this problem.
+
+- We will try to add trails to the animation display if possible. These will allow us the overall course of the colliding galaxy.
+
+- We will allow the user to show the time passing through a display in the collision animation as well as enter the wanted figure size.
+
+- We will fix the issue of units for masses and distances since as of now, their units are unspecified.
+
+- The simulation runs in a 2D plane which does ot reflect a true sense of the beauty of galaxy collisions. We will try to implement a 3D version later on.
 
