@@ -4,8 +4,9 @@ import os
 import imageio
 import time
 
+
 ################################################################################
-# --------- FONCTIONS ---------#
+# --------- FUNCTIONS ---------#
 
 def str_to_float_list(string):
     L = string.split()
@@ -92,7 +93,6 @@ def initial_trajectory(periapsis, eccentricity, true_anomaly, M):
     X = np.array([r * np.cos(theta), r * np.sin(theta)])
     V = np.array([-mu * np.sin(theta) / h, mu * (eccentricity + np.cos(theta)) / h])
     return X, V
-
 
 
 ################################################################################
@@ -195,7 +195,6 @@ class GalaxyBasic():
         v_vec = v - vc
         v = np.linalg.norm(v_vec)
         return -4 * np.pi * self.G ** 2 * 3 * M * rho * v_vec / (1 + v) ** 3
-
 
 
 ################################################################################
@@ -311,7 +310,6 @@ class MergerEngine():
         self.center_V = new_Vc
 
 
-
 ################################################################################
 # --------- SIMULATION CLASS ---------#
 
@@ -345,7 +343,7 @@ class Galaxy_Collision():
                 file.readline()
             for i in range(self.n_saves):
                 data = self.load_state(file)
-        galaxies=[]
+        galaxies = []
         for i in range(self.n_galaxies):
             indices = self.tags == i
             X = np.zeros(shape=(galaxies_info[i][1], 2))
@@ -504,5 +502,3 @@ class Galaxy_Collision():
             Images = select_list(Images, n_images)
             imageio.mimsave(gif_path, Images, fps=gif_fps)
             print("########## GIF FINISHED ##########")
-
-
