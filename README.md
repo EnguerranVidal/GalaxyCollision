@@ -1,4 +1,5 @@
 # **GALAXY MERGER** 
+[![wakatime](https://wakatime.com/badge/github/EnguerranVidal/Galaxy-Collision.svg)](https://wakatime.com/badge/github/EnguerranVidal/Galaxy-Collision)
 
 <p align="center">
   <img src="https://github.com/EnguerranVidal/Galaxy-Collision/blob/main/docs/showcase_gifs/Galaxy_Collision.gif" width="600" height="600">
