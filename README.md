@@ -61,6 +61,28 @@ This repository contains the following files :
 - **[main.py](https://github.com/EnguerranVidal/Galaxy-Collision/blob/main/main.py)** : contains an runnable code resulting in the creation of the uncompressed top page animation of two galaxies colliding.
 - **[__galaxycollision.py](https://github.com/EnguerranVidal/Galaxy-Collision/blob/main/__galaxycollision.py)** : The main file containing the classes and functions used throughout the project. 
  
+# INSTALLATION
+
+```
+git clone https://github.com/EnguerranVidal/Galaxy-Collision.git
+```
+
+```
+cd Galaxy-Collision
+```
+
+```
+pip install -r requirements.txt
+```
+
+
+# USING THE CODE
+
+To start a simulation run, the following command can be entered :
+```
+python3 main.py
+```
+To change variable such as galaxy size, number of rings, ass of the central massive bodies, incoming trajectories, feel free to change the code lines in **[main.py](https://github.com/EnguerranVidal/Galaxy-Collision/blob/main/main.py)**.
 
 # POSSIBLE UPDATES ?
 
