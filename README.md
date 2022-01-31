@@ -13,13 +13,13 @@ For this simulation, we will use a modified N-Body Engine we used for the
 **[Planetary-Orbits-Solar-System](https://github.com/EnguerranVidal/Planetary-Orbits-Solar-System)** Python project back in 2020.
 
 
-## The Galaxies :
+### The Galaxies :
 
 The program's galaxies are made of a center massive black hole (white dot). It also contains big amount of massless particles
 representing stars that orbit around the center (blue dots). The particles are placed along circles/rings which share the same speed from
 Newtonian physics. We then give the galaxies an initial position and speed. An animation of the different speed rings can be found right above before the collision from the second galaxy..
 
-## The Particles :
+### The Particles :
 
 As we mentioned earlier, the particles are separated into two groups.
 
@@ -41,7 +41,7 @@ The resulting acceleration is similar to air friction. It is usually called "dyn
 
 They represent stars which masses are insignificant when compared to the center black holes we discussed earlier. To ease the calculations the N-Body problem poses, we make them massless, which means they are not taken into account in the overall gravity calculations and do not affect the central black holes.
 
-## The N-Body Engine :
+### The N-Body Engine :
 
 The calculations engine has been directly taken from the  **[Planetary-Orbits-Solar-System](https://github.com/EnguerranVidal/Planetary-Orbits-Solar-System)** Python Numerical Physics project I did with Jonathan OERS back in 2020. It was of course modified to fit the needs of this project, especially to separate the calculations of next-steps' positions and velocities for central massive bodies (black holes) and massless particles.
 The use of integration schemes to solve the N-Body problem differential equations is implemented through the Euler method and the Runge-Kutta 4 method which are the two most famous. We will try to implement more integratiosn schemes later and also try and compare those to the use of "odeint" from the **scipy** scientific library.
@@ -50,7 +50,7 @@ The use of integration schemes to solve the N-Body problem differential equation
   <img src="https://github.com/EnguerranVidal/Galaxy-Collision/blob/main/docs/showcase_images/integration.PNG">
 </p>
 
-## The Main Simulation Class :
+### The Main Simulation Class :
 
 The main class commands and runs calculation done by the above engine. It then stores the resulting data in a txt file put in the **[\logs directory](https://github.com/EnguerranVidal/Galaxy-Collision/tree/main/logs)** with a header meant to portray the simulation parameters for easy replicability and further calculations through a system of "loadable sessions". Such header can be seen right below, it hosts some info about the diferent galaxies.
 <p align="center">
@@ -58,12 +58,12 @@ The main class commands and runs calculation done by the above engine. It then s
 </p>
 The data can then displayed in a Matplotlib animation. The animation can be stored too as a GIF file through the use of the imageio library. However, as of now, the GIF is not compressed and can therefore be quite heavy, we will try to fix this annoyance in the next update if possible.
 
-# CONTENTS
+## CONTENTS
 This repository contains the following files :
 - **[main.py](https://github.com/EnguerranVidal/Galaxy-Collision/blob/main/main.py)** : contains an runnable code resulting in the creation of the uncompressed top page animation of two galaxies colliding.
 - **[__galaxycollision.py](https://github.com/EnguerranVidal/Galaxy-Collision/blob/main/__galaxycollision.py)** : The main file containing the classes and functions used throughout the project. 
  
-# INSTALLATION
+## INSTALLATION
 
 ```
 git clone https://github.com/EnguerranVidal/Galaxy-Collision.git
@@ -78,7 +78,7 @@ pip install -r requirements.txt
 ```
 
 
-# USING THE CODE
+## USING THE CODE
 
 To start a simulation run, the following command can be entered :
 ```
@@ -86,7 +86,7 @@ python3 main.py
 ```
 To change variable such as galaxy size, number of rings, ass of the central massive bodies, incoming trajectories, feel free to change the code lines in **[main.py](https://github.com/EnguerranVidal/Galaxy-Collision/blob/main/main.py)**.
 
-# POSSIBLE UPDATES ?
+## POSSIBLE UPDATES ?
 
 - The galaxies cannot, as of now, really "merg", this is due to the absence of a particle collision merg feature that could able us to fuse the multiple massive bodies when they get too close to one another. Since the main simulation class depends on the number of galaxies remaining constant, this feature could take a certain amount of time to implement. For now, the massive bodies simply get close and the least heavy is flung out of the system.
 
@@ -96,7 +96,7 @@ To change variable such as galaxy size, number of rings, ass of the central mass
 
 - We will allow the user to show the time passing through a display in the collision animation as well as enter the wanted figure size.
 
-- We will fix the issue of units for masses and distances since as of now, their units are unspecified.
+- We will fix the issue of units for masses and distances since as of now, they are unspecified.
 
-- The simulation runs in a 2D plane which does ot reflect a true sense of the beauty of galaxy collisions. We will try to implement a 3D version later on.
+- The simulation runs in a 2D plane which does not reflect the beauty of galaxy collisions. We will try to implement a 3D version later on.
 
