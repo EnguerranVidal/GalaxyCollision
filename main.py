@@ -1,4 +1,4 @@
-from __galaxycollision import *
+from sources.old.__galaxycollision import *
 
 
 def main():
@@ -18,8 +18,9 @@ def main():
     gal2.initial_state(X, V)
 
     # SIMULATION
-    merger = Galaxy_Collision([gal1, gal2])
-    merger.RUN(0.01, 2, method='Runge_Kutta')  # We run some calculations
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    merger = Galaxy_Collision([gal1, gal2], current_dir)
+    merger.RUN(0.01, 1, method='Runge_Kutta')  # We run some calculations
     merger.display(gif_fps=25, gif_duration=4)  # We create a GIF from the showcased Matplotlib animation
 
 
