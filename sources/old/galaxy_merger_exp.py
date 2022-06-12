@@ -121,7 +121,7 @@ class GalaxyRing2D:
         self.halo_v = 2 * np.sqrt(self.G * self.M / self.halo_r)
 
     def initial_state(self, X, V):
-        assert self.initialized == False, "Galaxy's position and velocity are already initialized."
+        assert self.initialized == False, "ObjectCluster's position and velocity are already initialized."
         X = np.array([X])
         V = np.array([V])
         self.X = self.X + X
@@ -193,7 +193,7 @@ class GalaxySpiral2D:
         self.halo_v = 2 * np.sqrt(self.G * self.M / self.halo_r)
 
     def initial_state(self, X, V):
-        assert not self.initialized, "Galaxy's position and velocity are already initialized."
+        assert not self.initialized, "ObjectCluster's position and velocity are already initialized."
         X = np.array([X])
         V = np.array([V])
         self.X = self.X + X
@@ -313,7 +313,7 @@ class Merger_engine():
                 if j != k:
                     v = center_X[k, :] - center_X[j, :]
                     d = np.linalg.norm(v)
-                    f = self.galaxies[k].Dyn_friction(d, center_V[j, :], center_V[k, :], self.galaxies[j].M)
+                    f = self.galaxies[k].dynamicFriction(d, center_V[j, :], center_V[k, :], self.galaxies[j].M)
                     a[j, :] = a[j, :] + self.G * (self.galaxies[k].M * v) / (d ** 3) + f
         return a
 
