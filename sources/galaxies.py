@@ -22,10 +22,14 @@ class ObjectCluster:
         self.initialized = False
 
     def initialState(self, xc, vc):
-        if not type(xc).__module__ == np.__name__:
+        if isinstance(xc, list):
             xc = np.array([xc])
-        if not type(vc).__module__ == np.__name__:
+            xc = xc.reshape(2, )
+        if isinstance(vc, list):
             vc = np.array([vc])
+            vc = vc.reshape(2, )
+        xc = np.array([xc])
+        vc = np.array([vc])
         self.positions += xc
         self.velocities += vc
         self.initialized = True
@@ -41,10 +45,12 @@ class MasslessGalaxy(ObjectCluster):
         self.haloVelocity = 2 * np.sqrt(self.gravitationCst * self.centralMass / self.haloRadius)
 
     def initialState(self, xc, vc):
-        if not type(xc).__module__ == np.__name__:
+        if isinstance(xc, list):
             xc = np.array([xc])
-        if not type(vc).__module__ == np.__name__:
+            xc = xc.reshape(2, )
+        if isinstance(vc, list):
             vc = np.array([vc])
+            vc = vc.reshape(2, )
         self.positions += xc
         self.velocities += vc
         self.center_position = xc

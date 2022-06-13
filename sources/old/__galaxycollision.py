@@ -207,18 +207,18 @@ class MergerEngine:
         if galaxies is None:
             galaxies = []
         self.galaxies = galaxies
-        self.G = gravitational_constant()
+        self.gravitationCst = gravitational_constant()
         # Massless Particles
-        galaxies_X = [galaxy.X for galaxy in self.galaxies]
-        galaxies_V = [galaxy.V for galaxy in self.galaxies]
+        galaxies_X = [galaxy.positions for galaxy in self.galaxies]
+        galaxies_V = [galaxy.velocities for galaxy in self.galaxies]
         self.massless_X = np.concatenate(galaxies_X)
         self.massless_V = np.concatenate(galaxies_V)
         self.n_massless = self.massless_X.shape[0]
         # Center Masses
         galaxies_Xc = [galaxy.center_position for galaxy in self.galaxies]
         galaxies_Vc = [galaxy.center_velocity for galaxy in self.galaxies]
-        self.center_X = np.concatenate(galaxies_Xc)
-        self.center_V = np.concatenate(galaxies_Vc)
+        self.center_X = np.array(galaxies_Xc)
+        self.center_V = np.array(galaxies_Vc)
         self.n_centers = self.center_X.shape[0]
 
     def change_galaxies(self, galaxies):
@@ -232,7 +232,7 @@ class MergerEngine:
             for k in range(m):
                 v = center_X[k, :] - objects_X[j, :]
                 d = np.linalg.norm(v)
-                a[j, :] = a[j, :] + self.G * (self.galaxies[k].M * v) / (d ** 3)
+                a[j, :] = a[j, :] + self.gravitationCst * (self.galaxies[k].centralMass * v) / (d ** 3)
         return a
 
     def centers_acceleration(self, center_X, center_V):
@@ -243,8 +243,9 @@ class MergerEngine:
                 if j != k:
                     v = center_X[k, :] - center_X[j, :]
                     d = np.linalg.norm(v)
-                    f = self.galaxies[k].dynamicFriction(d, center_V[j, :], center_V[k, :], self.galaxies[j].M)
-                    a[j, :] = a[j, :] + self.G * (self.galaxies[k].M * v) / (d ** 3) + f
+                    f = self.galaxies[k].dynamicFriction(d, center_V[j, :], center_V[k, :],
+                                                         self.galaxies[j].centralMass)
+                    a[j, :] = a[j, :] + self.gravitationCst * (self.galaxies[k].centralMass * v) / (d ** 3) + f
         return a
 
     def compute(self, dt, method='Euler_explicit'):
@@ -321,7 +322,7 @@ class Galaxy_Collision:
         self.engine = MergerEngine(galaxies)
         self.galaxies = galaxies
         self.n_galaxies = len(galaxies)
-        self.tags = np.concatenate([np.full((self.galaxies[i].particles,), i) for i in range(len(self.galaxies))])
+        self.tags = np.concatenate([np.full((self.galaxies[i].nbParticles,), i) for i in range(len(self.galaxies))])
         self.time = 0
         self.is_new = True
         self.saves_file = None
@@ -332,7 +333,7 @@ class Galaxy_Collision:
 
     def load_session(self, filename):
         new_path = self.current_dir + "\\logs\\" + filename
-        assert os.path.exists(new_path) == True, "ERROR : File does not exists, try a different name."
+        assert os.path.exists(new_path), "ERROR : File does not exists, try a different name."
         self.saves_file = filename
         self.is_new = False
         n_saves, n_galaxies, galaxies_info = self.load_header_info()
@@ -426,9 +427,9 @@ class Galaxy_Collision:
                 file.write('NFRAMES : ' + str(self.n_saves) + ' NGAL : ' + str(self.n_galaxies) + '\n')
                 for i in range(self.n_galaxies):
                     gal = "GAL" + str(i)
-                    file.write(gal + "MASS : " + str(self.galaxies[i].M) +
-                               " N" + gal + " : " + str(self.galaxies[i].particles) + " " +
-                               gal + "HALOR : " + str(self.galaxies[i].halo_r) + ' \n')
+                    file.write(gal + "MASS : " + str(self.galaxies[i].centralMass) +
+                               " N" + gal + " : " + str(self.galaxies[i].nbParticles) + " " +
+                               gal + "HALOR : " + str(self.galaxies[i].haloRadius) + ' \n')
             self.save_state()
         new_path = self.current_dir + "\\logs\\" + self.saves_file
         initial_time = self.time
