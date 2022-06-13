@@ -92,11 +92,11 @@ To change variable such as galaxy size, number of rings, ass of the central mass
 
 - The created GIF from the Galaxy_Collision.display() method is for now uncompressed and can therefore become quite heavy, we will try to implement a compressing function later on to ease this problem.
 
-- We will try to add trails to the animation display if possible. These will allow us the overall course of the colliding galaxy.
+- Ttrails to the animation display will be added if possible. These will allow us to observe the course of the colliding galaxy.
 
-- We will allow the user to show the time passing through a display in the collision animation as well as enter the wanted figure size.
+- The user will be allowed to showcase the time passing through a display in the collision animation as well as enter the wanted figure size.
 
-- We will fix the issue of units for masses and distances since as of now, they are unspecified.
+- The issue of units for masses and distances will be fixed since as of now, they are unspecified.
 
 - The simulation runs in a 2D plane which does not reflect the beauty of galaxy collisions. We will try to implement a 3D version later on.
 
