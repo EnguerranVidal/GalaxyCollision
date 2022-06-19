@@ -215,8 +215,8 @@ class MergerEngine:
         self.massless_V = np.concatenate(galaxies_V)
         self.n_massless = self.massless_X.shape[0]
         # Center Masses
-        galaxies_Xc = [galaxy.center_position for galaxy in self.galaxies]
-        galaxies_Vc = [galaxy.center_velocity for galaxy in self.galaxies]
+        galaxies_Xc = [galaxy.centerPosition for galaxy in self.galaxies]
+        galaxies_Vc = [galaxy.centerVelocity for galaxy in self.galaxies]
         self.center_X = np.array(galaxies_Xc)
         self.center_V = np.array(galaxies_Vc)
         self.n_centers = self.center_X.shape[0]

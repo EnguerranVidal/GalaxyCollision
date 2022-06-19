@@ -38,8 +38,8 @@ class ObjectCluster:
 class MasslessGalaxy(ObjectCluster):
     def __init__(self, positions, velocities, centralMass, haloRadius):
         super(MasslessGalaxy, self).__init__(positions, velocities)
-        self.center_position = None
-        self.center_velocity = None
+        self.centerPosition = None
+        self.centerVelocity = None
         self.centralMass = centralMass
         self.haloRadius = haloRadius
         self.haloVelocity = 2 * np.sqrt(self.gravitationCst * self.centralMass / self.haloRadius)
@@ -53,8 +53,8 @@ class MasslessGalaxy(ObjectCluster):
             vc = vc.reshape(2, )
         self.positions += xc
         self.velocities += vc
-        self.center_position = xc
-        self.center_velocity = vc
+        self.centerPosition = xc
+        self.centerVelocity = vc
         self.initialized = True
 
     def interiorMass(self, radii):
