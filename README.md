@@ -1,5 +1,5 @@
 # **GALAXY MERGER** 
-[![wakatime](https://wakatime.com/badge/github/EnguerranVidal/Galaxy-Collision.svg)](https://wakatime.com/badge/github/EnguerranVidal/Galaxy-Collision)   [![HitCount](http://hits.dwyl.com/EnguerranVidal/Galaxy-Collision.svg?style=flat)](http://hits.dwyl.com/EnguerranVidal/Galaxy-Collision)
+[![wakatime](https://wakatime.com/badge/user/d1fb42e6-38e1-489b-a7b0-fa05747ea94a/project/8c51de75-1e37-42a8-97d2-34a05484047a.svg)](https://wakatime.com/badge/user/d1fb42e6-38e1-489b-a7b0-fa05747ea94a/project/8c51de75-1e37-42a8-97d2-34a05484047a)   [![HitCount](http://hits.dwyl.com/EnguerranVidal/Galaxy-Collision.svg?style=flat)](http://hits.dwyl.com/EnguerranVidal/Galaxy-Collision)
 
 
 <p align="center">
