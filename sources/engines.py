@@ -3,11 +3,12 @@ from sources.galaxies import *
 
 
 class ClusterEngine2D:
-    def __init__(self, clusters=None):
+    def __init__(self, clusters=None, theta=1):
         self.gravitationCst = gravitationalConstant()
         if clusters is None:
             clusters = []
         self.clusters = clusters
+        self.theta = theta
         # Massless Particles
         self.masslessSimulation = False
         self.masslessBool = (MasslessGalaxy, RingsMasslessGalaxy)
@@ -49,15 +50,40 @@ class ClusterEngine2D:
         self.massesV = np.array(massesV)
         self.massesM = np.array(massesM)
         self.nbMasses = self.massesX.shape[0]
-        print(self.massesX.shape)
-        print(self.massesV.shape)
-        print(self.massesM.shape)
-        print(self.masslessX.shape)
-        print(self.masslessV.shape)
+
+    def acceleration(self, massesX, massesM, masslessX=None):
+        quadTree = QuadTree(massesX, massesM, self.theta)
+        # Masses particles
+        massesA = np.zeros(masslessX.shape)
+        n = massesX.shape[0]
+        for j in range(n):
+            massesA[j, :] = quadTree.forces(massesX[j, :])
+        # Massless particles
+        if self.masslessSimulation:
+            masslessA = np.zeros(masslessX.shape)
+            n = masslessX.shape[0]
+            for j in range(n):
+                masslessA[j, :] = quadTree.forces(masslessX[j, :])
+            return massesA, masslessA
+        else:
+            return massesA
+
+    def massesAcceleration(self, massesX, massesM):
+        quadTree = QuadTree(massesX, massesM, self.theta)
+        a = np.zeros(massesX.shape)
+        n = massesX.shape[0]
+        for j in range(n):
+            a[j, :] = quadTree.forces(massesX[j, :])
+        return a
 
 
 class OctTree:
-    def __init__(self, massesX, massesM, theta, x1, x2, y1, y2, z1, z2):
+    def __init__(self, massesX, massesM, theta, limits=None):
+        if limits is None:
+            xMax = np.max(np.abs(massesX[:, 0])) * 1.01
+            yMax = np.max(np.abs(massesX[:, 1])) * 1.01
+            zMax = np.max(np.abs(massesX[:, 2])) * 1.01
+            limits = (-xMax, xMax, -yMax, yMax, -zMax, zMax)
         if not type(massesX).__module__ == np.__name__:
             massesX = np.array([massesX])
         if not type(massesM).__module__ == np.__name__:
@@ -67,7 +93,9 @@ class OctTree:
         self.gravitationCst = gravitationalConstant()
         self.nbObjects = self.massesX.shape[0]
         self.children = [None, None, None, None, None, None, None, None]
-        self.x1, self.x2, self.y1, self.y2, self.z1, self.z2 = x1, x2, y1, y2, z1, z2
+        self.x1, self.x2 = limits[0], limits[1]
+        self.y1, self.y2 = limits[2], limits[3]
+        self.z1, self.z2 = limits[4], limits[5]
         self.centreMassX = None
         self.centreMass = None
         self.theta = theta
@@ -124,27 +152,27 @@ class OctTree:
                         BSW[0].append(self.massesX[i, :])
                         BSW[1].append(self.massesM[i])
         if len(TNE[0]) > 0:
-            self.children[0] = OctTree(TNE[0], TNE[1], self.theta, mx, self.x2, my, self.y2, mz, self.z2)
+            self.children[0] = OctTree(TNE[0], TNE[1], self.theta, (mx, self.x2, my, self.y2, mz, self.z2))
         if len(BNE[0]) > 0:
-            self.children[1] = OctTree(BNE[0], BNE[1], self.theta, mx, self.x2, my, self.y2, self.z1, mz)
+            self.children[1] = OctTree(BNE[0], BNE[1], self.theta, (mx, self.x2, my, self.y2, self.z1, mz))
         if len(TSE[0]) > 0:
-            self.children[2] = OctTree(TSE[0], TSE[1], self.theta, mx, self.x2, self.y1, my, mz, self.z2)
+            self.children[2] = OctTree(TSE[0], TSE[1], self.theta, (mx, self.x2, self.y1, my, mz, self.z2))
         if len(BSE[0]) > 0:
-            self.children[3] = OctTree(BSE[0], BSE[1], self.theta, mx, self.x2, self.y1, my, self.z1, mz)
+            self.children[3] = OctTree(BSE[0], BSE[1], self.theta, (mx, self.x2, self.y1, my, self.z1, mz))
         if len(TNW[0]) > 0:
-            self.children[4] = OctTree(TNW[0], TNW[1], self.theta, self.x1, mx, my, self.y2, mz, self.z2)
+            self.children[4] = OctTree(TNW[0], TNW[1], self.theta, (self.x1, mx, my, self.y2, mz, self.z2))
         if len(BNW[0]) > 0:
-            self.children[5] = OctTree(BNW[0], BNW[1], self.theta, self.x1, mx, my, self.y2, self.z1, mz)
+            self.children[5] = OctTree(BNW[0], BNW[1], self.theta, (self.x1, mx, my, self.y2, self.z1, mz))
         if len(TSW[0]) > 0:
-            self.children[6] = OctTree(TSW[0], TSW[1], self.theta, self.x1, mx, self.y1, my, mz, self.z2)
+            self.children[6] = OctTree(TSW[0], TSW[1], self.theta, (self.x1, mx, self.y1, my, mz, self.z2))
         if len(BSW[0]) > 0:
-            self.children[7] = OctTree(BSW[0], BSW[1], self.theta, self.x1, mx, self.y1, my, self.z1, mz)
+            self.children[7] = OctTree(BSW[0], BSW[1], self.theta, (self.x1, mx, self.y1, my, self.z1, mz))
 
     def forces(self, position):
         if not type(position).__module__ == np.__name__:
             position = np.array([position])
         width = abs(self.x1 - self.x2)
-        vector = position - self.centreMassX
+        vector = self.centreMassX - position
         distance = np.sqrt(vector[0] ** 2 + vector[1] ** 2 + vector[2] ** 2)
         if distance != 0:
             ratio = width / distance
@@ -167,7 +195,11 @@ class OctTree:
 
 
 class QuadTree:
-    def __init__(self, massesX, massesM, theta, x1, x2, y1, y2):
+    def __init__(self, massesX, massesM, theta, limits=None):
+        if limits is None:
+            xMax = np.max(np.abs(massesX[:, 0])) * 1.01
+            yMax = np.max(np.abs(massesX[:, 1])) * 1.01
+            limits = (-xMax, xMax, -yMax, yMax)
         if not type(massesX).__module__ == np.__name__:
             massesX = np.array([massesX])
         if not type(massesM).__module__ == np.__name__:
@@ -177,7 +209,7 @@ class QuadTree:
         self.gravitationCst = gravitationalConstant()
         self.nbObjects = self.massesX.shape[0]
         self.children = [None, None, None, None]
-        self.x1, self.x2, self.y1, self.y2 = x1, x2, y1, y2
+        self.x1, self.x2, self.y1, self.y2 = limits[0], limits[1], limits[2], limits[3]
         self.centreMassX = None
         self.centreMass = None
         self.theta = theta
@@ -215,13 +247,13 @@ class QuadTree:
                     SW[0].append(self.massesX[i, :])
                     SW[1].append(self.massesM[i])
         if len(NE[0]) > 0:
-            self.children[0] = QuadTree(NE[0], NE[1], self.theta, mx, self.x2, my, self.y2)
+            self.children[0] = QuadTree(NE[0], NE[1], self.theta, (mx, self.x2, my, self.y2))
         if len(SE[0]) > 0:
-            self.children[1] = QuadTree(SE[0], SE[1], self.theta, mx, self.x2, self.y1, my)
+            self.children[1] = QuadTree(SE[0], SE[1], self.theta, (mx, self.x2, self.y1, my))
         if len(NW[0]) > 0:
-            self.children[2] = QuadTree(NW[0], NW[1], self.theta, self.x1, mx, my, self.y2)
+            self.children[2] = QuadTree(NW[0], NW[1], self.theta, (self.x1, mx, my, self.y2))
         if len(SW[0]) > 0:
-            self.children[3] = QuadTree(SW[0], SW[1], self.theta, self.x1, mx, self.y1, my)
+            self.children[3] = QuadTree(SW[0], SW[1], self.theta, (self.x1, mx, self.y1, my))
 
     def forces(self, position):
         if not type(position).__module__ == np.__name__:
