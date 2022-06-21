@@ -3,78 +3,44 @@ from sources.galaxies import *
 
 
 class ClusterEngine2D:
-    def __init__(self, clusters=None, theta=1):
+    def __init__(self, clusters=None, mode='BARNES_HUT'):
         self.gravitationCst = gravitationalConstant()
         if clusters is None:
             clusters = []
         self.clusters = clusters
-        self.theta = theta
-        # Massless Particles
-        self.masslessSimulation = False
-        self.masslessBool = (MasslessGalaxy, RingsMasslessGalaxy)
-        self.masslessX, self.masslessV = None, None
-        self.nbMassless = 0
+        self.mode = mode
         # Mass Clusters
         self.massesX, self.massesV, self.massesM = None, None, None
         self.nbMasses, self.nbCenters = 0, 0
         # Engine Variables
         self.quadTree = None
+        self.theta = None
         # Load Objects
         self.loadObjects()
 
+    def setTheta(self, theta=1):
+        if self.mode == 'BARNES_HUT':
+            self.theta = theta
+
     def loadObjects(self):
         # Massive Clusters
-        massesX = [cluster.positions for cluster in self.clusters if not isinstance(cluster, self.masslessBool)]
-        massesV = [cluster.velocities for cluster in self.clusters if not isinstance(cluster, self.masslessBool)]
-        massesM = [cluster.masses for cluster in self.clusters if not isinstance(cluster, self.masslessBool)]
-        # Massless Clusters
-        masslessObjects = [isinstance(cluster, self.masslessBool) for cluster in self.clusters]
-        if True in masslessObjects:
-            self.masslessSimulation = True
-            # Loading Massless Particles
-            masslessX = [cluster.positions for cluster in self.clusters if isinstance(cluster, self.masslessBool)]
-            masslessV = [cluster.velocities for cluster in self.clusters if isinstance(cluster, self.masslessBool)]
-            self.masslessX = np.concatenate(masslessX)
-            self.masslessV = np.concatenate(masslessV)
-            self.nbMassless = self.masslessX.shape[0]
-            # Load Massless Cluster Centers
-            masslessCentersX = [cluster.centerPosition for cluster in self.clusters]
-            masslessCentersV = [cluster.centerVelocity for cluster in self.clusters]
-            masslessCenterMasses = [cluster.centralMass for cluster in self.clusters]
-            self.nbCenters = len(masslessCentersX)
-            for i in range(self.nbCenters):
-                massesX.append(masslessCentersX[i])
-                massesV.append(masslessCentersV[i])
-                massesM.append(masslessCenterMasses[i])
+        massesX = [cluster.positions for cluster in self.clusters]
+        massesV = [cluster.velocities for cluster in self.clusters]
+        massesM = [cluster.masses for cluster in self.clusters]
+        # Assigning Massive Particles Arrays
         self.massesX = np.array(massesX)
         self.massesV = np.array(massesV)
         self.massesM = np.array(massesM)
         self.nbMasses = self.massesX.shape[0]
 
-    def acceleration(self, massesX, massesM, masslessX=None):
+    def accelerationBarnesHut(self, massesX, massesM, masslessX=None):
         quadTree = QuadTree(massesX, massesM, self.theta)
         # Masses particles
         massesA = np.zeros(masslessX.shape)
         n = massesX.shape[0]
         for j in range(n):
             massesA[j, :] = quadTree.forces(massesX[j, :])
-        # Massless particles
-        if self.masslessSimulation:
-            masslessA = np.zeros(masslessX.shape)
-            n = masslessX.shape[0]
-            for j in range(n):
-                masslessA[j, :] = quadTree.forces(masslessX[j, :])
-            return massesA, masslessA
-        else:
-            return massesA
-
-    def massesAcceleration(self, massesX, massesM):
-        quadTree = QuadTree(massesX, massesM, self.theta)
-        a = np.zeros(massesX.shape)
-        n = massesX.shape[0]
-        for j in range(n):
-            a[j, :] = quadTree.forces(massesX[j, :])
-        return a
+        return massesA
 
 
 class OctTree:
@@ -114,7 +80,7 @@ class OctTree:
         # Top : towards +Z, North : towards +Y, East : towards +X
         # Each list :  contains positions [0] and masses [1]
         TNW, TNE, TSW, TSE = [[], []], [[], []], [[], []], [[], []]
-        BNW, BNE, BSW, BSE = [[], [ ]], [[], []], [[], []], [[], []]
+        BNW, BNE, BSW, BSE = [[], []], [[], []], [[], []], [[], []]
         # Calculating middle points
         mx = (self.x1 + self.x2) / 2
         my = (self.y1 + self.y2) / 2
