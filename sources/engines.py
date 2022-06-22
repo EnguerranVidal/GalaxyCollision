@@ -1,46 +1,4 @@
-from sources.common.functions import *
 from sources.galaxies import *
-
-
-class ClusterEngine2D:
-    def __init__(self, clusters=None, mode='BARNES_HUT'):
-        self.gravitationCst = gravitationalConstant()
-        if clusters is None:
-            clusters = []
-        self.clusters = clusters
-        self.mode = mode
-        # Mass Clusters
-        self.massesX, self.massesV, self.massesM = None, None, None
-        self.nbMasses, self.nbCenters = 0, 0
-        # Engine Variables
-        self.quadTree = None
-        self.theta = None
-        # Load Objects
-        self.loadObjects()
-
-    def setTheta(self, theta=1):
-        if self.mode == 'BARNES_HUT':
-            self.theta = theta
-
-    def loadObjects(self):
-        # Massive Clusters
-        massesX = [cluster.positions for cluster in self.clusters]
-        massesV = [cluster.velocities for cluster in self.clusters]
-        massesM = [cluster.masses for cluster in self.clusters]
-        # Assigning Massive Particles Arrays
-        self.massesX = np.array(massesX)
-        self.massesV = np.array(massesV)
-        self.massesM = np.array(massesM)
-        self.nbMasses = self.massesX.shape[0]
-
-    def accelerationBarnesHut(self, massesX, massesM, masslessX=None):
-        quadTree = QuadTree(massesX, massesM, self.theta)
-        # Masses particles
-        massesA = np.zeros(masslessX.shape)
-        n = massesX.shape[0]
-        for j in range(n):
-            massesA[j, :] = quadTree.forces(massesX[j, :])
-        return massesA
 
 
 class OctTree:
@@ -245,3 +203,86 @@ class QuadTree:
             if i is not None:
                 return False
         return True
+
+
+class ClusterEngine2D:
+    def __init__(self, clusters=None, mode='BARNES_HUT'):
+        self.gravitationCst = gravitationalConstant()
+        if clusters is None:
+            clusters = []
+        self.clusters = clusters
+        self.mode = mode
+        # Mass Clusters
+        self.massesX, self.massesV, self.massesM = None, None, None
+        self.nbMasses, self.nbCenters = 0, 0
+        # Engine Variables
+        self.quadTree = None
+        self.theta = None
+        # Load Objects
+        self.loadObjects()
+
+    def setTheta(self, theta=1):
+        if self.mode == 'BARNES_HUT':
+            self.theta = theta
+
+    def loadObjects(self):
+        # Massive Clusters
+        massesX = [cluster.positions for cluster in self.clusters]
+        massesV = [cluster.velocities for cluster in self.clusters]
+        massesM = [cluster.masses for cluster in self.clusters]
+        # Assigning Massive Particles Arrays
+        self.massesX = np.array(massesX)
+        self.massesV = np.array(massesV)
+        self.massesM = np.array(massesM)
+        self.nbMasses = self.massesX.shape[0]
+
+    def accelerationBarnesHut(self, massesX, massesM):
+        quadTree = QuadTree(massesX, massesM, self.theta)
+        # Masses particles
+        massesA = np.zeros(massesX.shape)
+        n = massesX.shape[0]
+        for j in range(n):
+            massesA[j, :] = quadTree.forces(massesX[j, :])
+        return massesA
+
+    def compute(self, dt, method='EULER_EXPLICIT'):
+        if method == 'EULER_EXPLICIT':
+            self.computeEulerExplicit(dt)
+        if method == 'EULER_SEMI_IMPLICIT':
+            self.computeEulerSemiImplicit(dt)
+        if method == 'RUNGE_KUTTA':
+            self.computeRungeKutta(dt)
+
+    def computeEulerExplicit(self, dt):
+        # Calculating new positions
+        newV = self.massesV + dt * self.accelerationBarnesHut(self.massesX, self.massesM)
+        newX = self.massesX + dt * self.massesV
+        # Updating positions
+        self.massesX = newX
+        self.massesV = newV
+
+    def computeEulerSemiImplicit(self, dt):
+        # Calculating new positions
+        newV = self.massesV + dt * self.accelerationBarnesHut(self.massesX, self.massesM)
+        newX = self.massesX + dt * newV
+        # Updating positions
+        self.massesX = newX
+        self.massesV = newV
+
+    def compute_Runge_Kutta(self, dt):
+        # Calculating new positions
+        k1_X = self.massesV * dt
+        k1_V = self.accelerationBarnesHut(self.massesX, self.massesM) * dt
+        k2_X = (self.massesV + k1_V / 2) * dt
+        k2_V = self.accelerationBarnesHut(self.massesX + k1_X / 2, self.massesM) * dt
+        k3_X = (self.massesV + k2_V / 2) * dt
+        k3_V = self.accelerationBarnesHut(self.massesX + k2_X / 2, self.massesM) * dt
+        k4_X = (self.massesV + k3_V) * dt
+        k4_V = self.accelerationBarnesHut(self.massesX + k3_X, self.massesM) * dt
+        # Updating positions
+        newX = self.massesX + (k1_X + 2 * k2_X + 2 * k3_X + k4_X) / 6
+        newV = self.massesV + (k1_V + 2 * k2_V + 2 * k3_V + k4_V) / 6
+        self.massesX = newX
+        self.massesV = newV
+
+

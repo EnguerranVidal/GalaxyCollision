@@ -1,4 +1,4 @@
-from sources.common.functions import *
+from sources.common.constants import *
 from sources.galaxies import *
 
 

@@ -1,9 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-
-def gravitationalConstant():
-    return 4.302e-3  # pc(M_solar)^-1 (km/s)^2
+from sources.common.constants import *
 
 
 def particleRing(nb, radius, gravityCst, mass):
@@ -43,6 +41,32 @@ def generateDisk2D(nbStars, radius, mass, gravityCst, seed=None):
     return positions, velocities, masses
 
 
+def generateDisk3D(nbStars, radius, mass, zOffsetMax, gravityCst, seed=None):
+    np.random.seed(seed)
+
+    # Calculating positions
+    positions = np.zeros(shape=(nbStars, 3))
+    distances = np.random.random((nbStars,))
+    zOffsets = (np.random.random((nbStars,)) - 0.5) * 2 * zOffsetMax * (np.ones_like(distances) - np.sqrt(distances))
+    distances = distances * radius
+    angles = np.random.random((nbStars,)) * 2 * np.pi
+    positions[:, 0] = np.cos(angles) * distances
+    positions[:, 1] = np.sin(angles) * distances
+    positions[:, 2] = zOffsets
+
+    # Calculating speeds
+    velocities = np.zeros(shape=(nbStars, 3))
+    masses = np.random.random((nbStars,)) * mass
+    for i in range(nbStars):
+        mask = distances > distances[i]
+        internalMass = np.sum(masses[mask])
+        velNorm = np.sqrt(gravityCst * internalMass / distances[i])
+        velocities[i, 0] = velNorm * np.cos(angles[i])
+        velocities[i, 1] = velNorm * np.sin(angles[i])
+        velocities[i, 2] = np.zeros_like(velocities[i, 2])
+    return positions, velocities, masses
+
+
 def generateArms2D(nbStars, nbArms, radius, armOffset, mass, rotFactor, gravityCst, seed=None):
     np.random.seed(seed)
     armSeparationDistance = 2 * np.pi / nbArms
@@ -60,9 +84,9 @@ def generateArms2D(nbStars, nbArms, radius, armOffset, mass, rotFactor, gravityC
 
     # Rotation angles
     rotations = distances * rotFactor
-    angles = ((angles / armSeparationDistance) * armSeparationDistance + armOffsets + rotations)
     for i in range(nbStars):
-        angles[i] = int(angles[i])
+        angles[i] = int(angles[i] / armSeparationDistance)
+    angles = angles * armSeparationDistance + armOffsets + rotations
 
     # Calculating positions
     positions = np.zeros(shape=(nbStars, 2))
@@ -79,32 +103,3 @@ def generateArms2D(nbStars, nbArms, radius, armOffset, mass, rotFactor, gravityC
         velocities[i, 0] = velNorm * np.cos(angles[i])
         velocities[i, 0] = velNorm * np.sin(angles[i])
     return positions, velocities, masses
-
-
-def plotGalaxyDisk2D(nbStars=1000):
-    fig = plt.figure(figsize=(10, 10))
-    fig.patch.set_facecolor('xkcd:black')  # Changing figure to black
-    ax = fig.add_subplot(111)
-    ax.set_facecolor('xkcd:black')  # Changing background to black
-    G = gravitationalConstant()
-    positions, velocities, masses = generateDisk2D(nbStars, 1, 3, G)
-    X = positions[:, 0]
-    Y = positions[:, 1]
-    ax.scatter(X, Y, s=5)
-    plt.show()
-
-
-def plotGalaxyArms2D(nbStars=1000):
-    fig = plt.figure(figsize=(10, 10))
-    fig.patch.set_facecolor('xkcd:black')  # Changing figure to black
-    ax = fig.add_subplot(111)
-    ax.set_facecolor('xkcd:black')  # Changing background to black
-    G = gravitationalConstant()
-    positions, velocities, masses = generateArms2D(nbStars, 5, 1, 0.5, 3, 5, G)
-    X = positions[:, 0]
-    Y = positions[:, 1]
-    ax.scatter(X, Y, s=5)
-    plt.show()
-
-
-plotGalaxyArms2D(1000)

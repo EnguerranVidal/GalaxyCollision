@@ -5,7 +5,7 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 
-from sources.common.functions import *
+from sources.common.constants import *
 
 
 class ObjectCluster:
@@ -38,10 +38,12 @@ class ObjectCluster:
         self.initialized = True
 
 
-class DiskGalaxy(ObjectCluster):
+class DiskGalaxy2D(ObjectCluster):
     def __init__(self, nbStars, radius, darkPercentage):
 
 
-        positions, velocities = None, None
+
+
+        positions, velocities, masses = None, None, None
         super().__init__(positions, velocities)
 
