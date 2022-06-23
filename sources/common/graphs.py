@@ -1,7 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from sources.common.generation import *
+from sources.common.gravitation import gravitationalConstant
+from sources.common.generation import generateArms2D, generateDisk3D, generateDisk2D
 
 
 def set_axes_equal(ax):
@@ -23,7 +24,6 @@ def set_axes_equal(ax):
     ax.set_xlim3d([x_middle - plot_radius, x_middle + plot_radius])
     ax.set_ylim3d([y_middle - plot_radius, y_middle + plot_radius])
     ax.set_zlim3d([z_middle - plot_radius, z_middle + plot_radius])
-
 
 
 def plotGalaxyDisk2D(nbStars=1000, percentage=35):
@@ -48,7 +48,7 @@ def plotGalaxyArms2D(nbStars=1000):
     ax = fig.add_subplot(111)
     ax.set_facecolor('xkcd:black')  # Changing background to black
     G = gravitationalConstant()
-    positions, velocities, masses = generateArms2D(nbStars, 5, 1, 5, 3, 5, G)
+    positions, velocities, masses = generateArms2D(nbStars, 5, 1, 5, 3, 1, G)
     X = positions[:, 0]
     Y = positions[:, 1]
     ax.scatter(X, Y, s=5)

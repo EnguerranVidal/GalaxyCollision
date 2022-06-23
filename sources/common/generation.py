@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from sources.common.constants import *
+from sources.common.gravitation import *
 
 
 def particleRing(nb, radius, gravityCst, mass):
@@ -90,8 +90,8 @@ def generateArms2D(nbStars, nbArms, radius, armOffset, mass, rotFactor, gravityC
 
     # Calculating positions
     positions = np.zeros(shape=(nbStars, 2))
-    positions[:, 0] = np.cos(angles) * distances
-    positions[:, 1] = np.sin(angles) * distances
+    positions[:, 0] = np.cos(angles) * distances * radius
+    positions[:, 1] = np.sin(angles) * distances * radius
 
     # Calculating speeds
     velocities = np.zeros(shape=(nbStars, 2))

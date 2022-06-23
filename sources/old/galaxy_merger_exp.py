@@ -121,7 +121,7 @@ class GalaxyRing2D:
         self.halo_v = 2 * np.sqrt(self.G * self.M / self.halo_r)
 
     def initial_state(self, X, V):
-        assert self.initialized == False, "ObjectCluster's position and velocity are already initialized."
+        assert self.initialized == False, "ObjectCluster2D's position and velocity are already initialized."
         X = np.array([X])
         V = np.array([V])
         self.X = self.X + X
@@ -193,7 +193,7 @@ class GalaxySpiral2D:
         self.halo_v = 2 * np.sqrt(self.G * self.M / self.halo_r)
 
     def initial_state(self, X, V):
-        assert not self.initialized, "ObjectCluster's position and velocity are already initialized."
+        assert not self.initialized, "ObjectCluster2D's position and velocity are already initialized."
         X = np.array([X])
         V = np.array([V])
         self.X = self.X + X

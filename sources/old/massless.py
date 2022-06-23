@@ -1,8 +1,8 @@
-from sources.common.constants import *
+from sources.common.gravitation import *
 from sources.galaxies import *
 
 
-class MasslessGalaxy(ObjectCluster):
+class MasslessGalaxy(ObjectCluster2D):
     def __init__(self, positions, velocities, centralMass, haloRadius):
         super(MasslessGalaxy, self).__init__(positions, velocities)
         self.centerPosition = None

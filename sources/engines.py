@@ -284,5 +284,3 @@ class ClusterEngine2D:
         newV = self.massesV + (k1_V + 2 * k2_V + 2 * k3_V + k4_V) / 6
         self.massesX = newX
         self.massesV = newV
-
-
