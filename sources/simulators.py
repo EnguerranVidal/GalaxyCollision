@@ -15,16 +15,15 @@ class Simulator:
         self.execDir = path
         self.engine = engine
         self.clusters = clusters
-        self.tags = np.concatenate([np.full((self.clusters[i].nbParticles,), i) for i in range(len(self.clusters))])
         self.nbClusters = len(self.clusters)
-        self.time = 0
+        self.tags = np.concatenate([np.full((self.clusters[i].nbParticles,), i) for i in range(len(self.clusters))])
+        self.simulatorDimension = max([len(i.initPosition) for i in self.clusters])
+        self.simulatorTime = 0
 
-        # Data Save System
+        ###### Data Save System ######
         self.isNew = True
+        self.nbSaves = 0
         self.sessionPath = None
-        self.nSaves = 0
-
-        # Files
         self.massesFile = None
         self.snapshotsFile = None
         self.clustersFile = None
@@ -42,7 +41,6 @@ class Simulator:
             self.sessionPath = os.path.join(logsPath, logFile)
             if not os.path.exists(self.sessionPath):
                 os.mkdir(self.sessionPath)
-
             ###### MASSES FILE ######
             massesLines = ['CLUSTER' + '\t' + 'MASSES' + '\n']
             for i in range(self.nbClusters):
@@ -55,20 +53,23 @@ class Simulator:
             with open(self.massesFile, 'w') as file:
                 for i in range(len(massesLines)):
                     file.write(massesLines[i])
-
+            ###### POSITIONS FILE ######
+            self.snapshotsFile = os.path.join(self.sessionPath, 'ClustersPositions.txt')
+            self.saveState()
             ###### CLUSTERS FILE ######
-            clustersLines = ['CLUSTER' + '\t' + 'NB_PARTICLES' + '\t' + 'DARK_MATTER' +
-                             '\t' 'INITIAL_X' + '\t' + 'INITIAL_V' + '\n']
+            clustersLines = ['CLUSTER\tNB_PARTICLES\tDARK_MATTER\tINITIAL_X\tINITIAL_V\tDIMENSION\tNB_FRAMES\n']
             for i in range(self.nbClusters):
                 name = self.clusters[i].name
                 nbParticles = str(self.clusters[i].nbParticles)
                 darkPercentage = str(self.clusters[i].darkPercentage)
                 initialX, initialV = '', ''
-                for j in range(len(self.clusters[i].initPosition)):
+                dimension = len(self.clusters[i].initPosition)
+                for j in range(self.simulatorDimension):
                     initialX += str(self.clusters[i].initPosition[j]) + ' '
                     initialV += str(self.clusters[i].initVelocity[j]) + ' '
-                line = name + '\t' + nbParticles + '\t' + darkPercentage + '\t'
-                line += initialX[:-1] + '\t' + initialV[:-1] + '\n'
+                # Creating Line
+                line = name + '\t' + nbParticles + '\t' + darkPercentage + '\t' + initialX[:-1]
+                line += '\t' + initialV[:-1] + '\t' + str(dimension) + str(self.nbSaves) + '\n'
                 clustersLines.append(line)
             self.clustersFile = os.path.join(self.sessionPath, 'ClustersConfiguration.txt')
             with open(self.clustersFile, 'w') as file:
@@ -76,12 +77,44 @@ class Simulator:
                     file.write(clustersLines[i])
 
     def saveState(self):
-        self.nSaves += 1
-        pass
+        ###### SAVE PARTICLES' POSITIONS ######
+        modes = ['a', 'w']
+        X = self.engine.massesX[:, 0].tolist()
+        Y = self.engine.massesX[:, 1].tolist()
+        Vx = self.engine.massesV[:, 0].tolist()
+        Vy = self.engine.massesV[:, 1].tolist()
+        with open(self.snapshotsFile, modes[int(self.isNew)]) as file:
+            file.write(str(self.simulatorTime) + '\n')
+            file.write(' '.join(X) + '\n')
+            file.write(' '.join(Y) + '\n')
+            if self.simulatorDimension == 3:
+                Z = self.engine.massesX[:, 2].tolist()
+                file.write(' '.join(Z) + '\n')
+            file.write(' '.join(Vx) + '\n')
+            file.write(' '.join(Vy) + '\n')
+            if self.simulatorDimension == 3:
+                Vz = self.engine.massesV[:, 2].tolist()
+                file.write(' '.join(Vz) + '\n')
+        ###### CHANGE NUMBER OF SAVES ######
+        self.nbSaves += 1
+        with open(self.clustersFile, 'r') as file:
+            lines = file.readlines()
+        for i in range(1, self.nbClusters + 1):
+            line = lines[i].strip('\n')
+            line = line.split('\t')
+            line[-1] = str(int(line[-1]) + 1)
+            line = '\t'.join(line) + '\n'
+            lines[i] = line
+        with open(self.clustersFile, 'w') as file:
+            for i in range(len(lines)):
+                file.write(lines[i])
 
     def run(self, dt=0.1, T=10, method='EULER_SEMI_IMPLICIT'):
-        initial_time = self.time
-        while self.time < initial_time + T:
+        if self.isNew:
+            self.initializeLogs()
+        initial_time = self.simulatorTime
+        print("########## Beginning Calculations ##########")
+        while self.simulatorTime < initial_time + T:
             self.engine.compute(dt, method=method)
-            self.time = self.time + dt
-
+            self.simulatorTime = self.simulatorTime + dt
+            self.saveState()

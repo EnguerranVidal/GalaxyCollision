@@ -477,7 +477,7 @@ class Galaxy_Collision:
                 indices = self.tags == j
                 X = data[1][indices]
                 Y = data[2][indices]
-                galaxy_particles.append(ax.scatter(X, Y, s=5))
+                galaxy_particles.append()
             galaxy_centers = ax.scatter(data[5], data[6], c="white", s=10)
             fig.show()
             plt.pause(3)
