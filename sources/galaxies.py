@@ -25,8 +25,9 @@ class ObjectCluster2D:
         self.name = name
         self.positions = positions
         self.velocities = velocities
-        self.initPosition = 0
-        self.initVelocity = 0
+        self.initPosition = None
+        self.initVelocity = None
+        self.initialState([0, 0], [0, 0])
         self.masses = masses
         self.nbParticles = self.positions.shape[0]
         self.initialized = False

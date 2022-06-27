@@ -32,5 +32,5 @@ def sessionName(separator=''):
     nSecs = str(struct.tm_sec)  # SECONDS
     if len(nSecs) == 1:
         nSecs = '0' + nSecs
-    string = string + nSecs + '.txt'
+    string = string + nSecs
     return string

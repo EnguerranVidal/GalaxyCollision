@@ -1,4 +1,5 @@
 from sources.galaxies import *
+import sys
 
 
 class OctTree:
@@ -124,10 +125,10 @@ class QuadTree:
             xMax = np.max(np.abs(massesX[:, 0])) * 1.01
             yMax = np.max(np.abs(massesX[:, 1])) * 1.01
             limits = (-xMax, xMax, -yMax, yMax)
-        if not type(massesX).__module__ == np.__name__:
-            massesX = np.array([massesX])
-        if not type(massesM).__module__ == np.__name__:
-            massesM = np.array([massesM])
+        if type(massesX) == list:
+            massesX = np.array(massesX)
+        if type(massesM) == list:
+            massesM = np.array(massesM)
         self.massesX = massesX
         self.massesM = massesM
         self.gravitationCst = gravitationalConstant()
@@ -141,10 +142,10 @@ class QuadTree:
         self.buildChildren()
 
     def getCenter(self):
-        xc = np.sum(self.massesX[:, 0])
-        yc = np.sum(self.massesX[:, 1])
         mc = np.sum(self.massesM)
         self.centreMass = mc
+        xc = np.sum(self.massesX[:, 0])
+        yc = np.sum(self.massesX[:, 1])
         self.centreMassX = np.array([xc, yc])
 
     def buildChildren(self):
@@ -206,24 +207,33 @@ class QuadTree:
 
 
 class ClusterEngine2D:
-    def __init__(self, clusters=None, mode='BARNES_HUT'):
+    def __init__(self, clusters=None, mode='BARNES_HUT', theta=1, percentage=50):
         self.gravitationCst = gravitationalConstant()
-        if clusters is None:
-            clusters = []
-        self.clusters = clusters
         self.mode = mode
         # Mass Clusters
         self.massesX, self.massesV, self.massesM = None, None, None
-        self.nbMasses, self.nbCenters = 0, 0
+        self.nbMasses = 0
         # Engine Variables
         self.quadTree = None
         self.theta = None
-        # Load Objects
+        # Loading Clusters
+        self.clusters = None
+        if type(clusters) == list:
+            self.feedClusters(clusters)
+        if mode == 'BARNES_HUT':
+            self.theta = theta
+            self.acceleration = self.accelerationBarnesHut
+        elif mode == 'ALTERED':
+            self.percentage = percentage
+            self.acceleration = self.accelerationAltered
+
+
+    def feedClusters(self, clusters):
+        self.clusters = clusters
         self.loadObjects()
 
     def setTheta(self, theta=1):
-        if self.mode == 'BARNES_HUT':
-            self.theta = theta
+        self.theta = theta
 
     def loadObjects(self):
         # Massive Clusters
@@ -231,12 +241,14 @@ class ClusterEngine2D:
         massesV = [cluster.velocities for cluster in self.clusters]
         massesM = [cluster.masses for cluster in self.clusters]
         # Assigning Massive Particles Arrays
-        self.massesX = np.array(massesX)
-        self.massesV = np.array(massesV)
-        self.massesM = np.array(massesM)
+        self.massesX = np.concatenate(massesX)
+        self.massesV = np.concatenate(massesV)
+        self.massesM = np.concatenate(massesM)
         self.nbMasses = self.massesX.shape[0]
+        sys.setrecursionlimit(self.nbMasses * 10)
 
     def accelerationBarnesHut(self, massesX, massesM):
+        """Defective"""
         quadTree = QuadTree(massesX, massesM, self.theta)
         # Masses particles
         massesA = np.zeros(massesX.shape)
@@ -244,6 +256,12 @@ class ClusterEngine2D:
         for j in range(n):
             massesA[j, :] = quadTree.forces(massesX[j, :])
         return massesA
+
+    @staticmethod
+    def accelerationAltered(massesX, massesM):
+        massesA = np.zeros(massesX.shape)
+        n = massesX.shape[0]
+        pass
 
     def compute(self, dt, method='EULER_EXPLICIT'):
         if method == 'EULER_EXPLICIT':
@@ -255,7 +273,7 @@ class ClusterEngine2D:
 
     def computeEulerExplicit(self, dt):
         # Calculating new positions
-        newV = self.massesV + dt * self.accelerationBarnesHut(self.massesX, self.massesM)
+        newV = self.massesV + dt * self.acceleration(self.massesX, self.massesM)
         newX = self.massesX + dt * self.massesV
         # Updating positions
         self.massesX = newX
@@ -263,22 +281,22 @@ class ClusterEngine2D:
 
     def computeEulerSemiImplicit(self, dt):
         # Calculating new positions
-        newV = self.massesV + dt * self.accelerationBarnesHut(self.massesX, self.massesM)
+        newV = self.massesV + dt * self.acceleration(self.massesX, self.massesM)
         newX = self.massesX + dt * newV
         # Updating positions
         self.massesX = newX
         self.massesV = newV
 
-    def compute_Runge_Kutta(self, dt):
+    def computeRungeKutta(self, dt):
         # Calculating new positions
         k1_X = self.massesV * dt
-        k1_V = self.accelerationBarnesHut(self.massesX, self.massesM) * dt
+        k1_V = self.acceleration(self.massesX, self.massesM) * dt
         k2_X = (self.massesV + k1_V / 2) * dt
-        k2_V = self.accelerationBarnesHut(self.massesX + k1_X / 2, self.massesM) * dt
+        k2_V = self.acceleration(self.massesX + k1_X / 2, self.massesM) * dt
         k3_X = (self.massesV + k2_V / 2) * dt
-        k3_V = self.accelerationBarnesHut(self.massesX + k2_X / 2, self.massesM) * dt
+        k3_V = self.acceleration(self.massesX + k2_X / 2, self.massesM) * dt
         k4_X = (self.massesV + k3_V) * dt
-        k4_V = self.accelerationBarnesHut(self.massesX + k3_X, self.massesM) * dt
+        k4_V = self.acceleration(self.massesX + k3_X, self.massesM) * dt
         # Updating positions
         newX = self.massesX + (k1_X + 2 * k2_X + 2 * k3_X + k4_X) / 6
         newV = self.massesV + (k1_V + 2 * k2_V + 2 * k3_V + k4_V) / 6

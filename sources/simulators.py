@@ -34,7 +34,7 @@ class Simulator:
 
     def initializeLogs(self):
         if self.isNew:
-            logsPath = os.path.join(self.execDir + 'logs')
+            logsPath = os.path.join(self.execDir, 'logs')
             if not os.path.exists(logsPath):
                 os.mkdir(logsPath)
             logFile = sessionName()
@@ -42,39 +42,39 @@ class Simulator:
             if not os.path.exists(self.sessionPath):
                 os.mkdir(self.sessionPath)
             ###### MASSES FILE ######
-            massesLines = ['CLUSTER' + '\t' + 'MASSES' + '\n']
+            massesLines = []
             for i in range(self.nbClusters):
                 massesLines.append([])
                 name = self.clusters[i].name
                 for j in range(self.clusters[i].nbParticles):
-                    massesLines[i].append(str(self.clusters[i].massesM[j]))
-                massesLines[i] = name + '\t' + ' '.join(massesLines[i]) + '\n'
-            self.massesFile = os.path.join(self.sessionPath, 'MassesConfiguration.txt')
+                    massesLines[i].append(str(self.clusters[i].masses[j]))
+                massesLines[i] = ' '.join(massesLines[i]) + '\n'
+            self.massesFile = os.path.join(self.sessionPath, 'MassesConfiguration.config')
             with open(self.massesFile, 'w') as file:
                 for i in range(len(massesLines)):
                     file.write(massesLines[i])
-            ###### POSITIONS FILE ######
-            self.snapshotsFile = os.path.join(self.sessionPath, 'ClustersPositions.txt')
-            self.saveState()
             ###### CLUSTERS FILE ######
-            clustersLines = ['CLUSTER\tNB_PARTICLES\tDARK_MATTER\tINITIAL_X\tINITIAL_V\tDIMENSION\tNB_FRAMES\n']
+            clustersLines = ['CLUSTER NB_PARTICLES DARK_MATTER INITIAL_X INITIAL_V DIMENSION NB_FRAMES\n']
             for i in range(self.nbClusters):
                 name = self.clusters[i].name
                 nbParticles = str(self.clusters[i].nbParticles)
                 darkPercentage = str(self.clusters[i].darkPercentage)
                 initialX, initialV = '', ''
-                dimension = len(self.clusters[i].initPosition)
+                dimension = len(self.clusters[i].initPosition[0])
                 for j in range(self.simulatorDimension):
-                    initialX += str(self.clusters[i].initPosition[j]) + ' '
-                    initialV += str(self.clusters[i].initVelocity[j]) + ' '
+                    initialX += str(self.clusters[i].initPosition[j]) + ','
+                    initialV += str(self.clusters[i].initVelocity[j]) + ','
                 # Creating Line
-                line = name + '\t' + nbParticles + '\t' + darkPercentage + '\t' + initialX[:-1]
-                line += '\t' + initialV[:-1] + '\t' + str(dimension) + str(self.nbSaves) + '\n'
+                line = name + ' ' + nbParticles + ' ' + darkPercentage + ' ' + initialX[:-1]
+                line += ' ' + initialV[:-1] + ' ' + str(dimension) + ' ' + str(self.nbSaves) + '\n'
                 clustersLines.append(line)
-            self.clustersFile = os.path.join(self.sessionPath, 'ClustersConfiguration.txt')
+            self.clustersFile = os.path.join(self.sessionPath, 'ClustersConfiguration.config')
             with open(self.clustersFile, 'w') as file:
                 for i in range(len(clustersLines)):
                     file.write(clustersLines[i])
+            ###### POSITIONS FILE ######
+            self.snapshotsFile = os.path.join(self.sessionPath, 'ClustersPositions.config')
+            self.saveState()
 
     def saveState(self):
         ###### SAVE PARTICLES' POSITIONS ######
@@ -85,25 +85,25 @@ class Simulator:
         Vy = self.engine.massesV[:, 1].tolist()
         with open(self.snapshotsFile, modes[int(self.isNew)]) as file:
             file.write(str(self.simulatorTime) + '\n')
-            file.write(' '.join(X) + '\n')
-            file.write(' '.join(Y) + '\n')
+            file.write(' '.join(map(str, X)) + '\n')
+            file.write(' '.join(map(str, Y)) + '\n')
             if self.simulatorDimension == 3:
                 Z = self.engine.massesX[:, 2].tolist()
-                file.write(' '.join(Z) + '\n')
-            file.write(' '.join(Vx) + '\n')
-            file.write(' '.join(Vy) + '\n')
+                file.write(' '.join(map(str, Z)) + '\n')
+            file.write(' '.join(map(str, Vx)) + '\n')
+            file.write(' '.join(map(str, Vy)) + '\n')
             if self.simulatorDimension == 3:
                 Vz = self.engine.massesV[:, 2].tolist()
-                file.write(' '.join(Vz) + '\n')
+                file.write(' '.join(map(str, Vz)) + '\n')
         ###### CHANGE NUMBER OF SAVES ######
         self.nbSaves += 1
         with open(self.clustersFile, 'r') as file:
             lines = file.readlines()
         for i in range(1, self.nbClusters + 1):
             line = lines[i].strip('\n')
-            line = line.split('\t')
+            line = line.split()
             line[-1] = str(int(line[-1]) + 1)
-            line = '\t'.join(line) + '\n'
+            line = ' '.join(line) + '\n'
             lines[i] = line
         with open(self.clustersFile, 'w') as file:
             for i in range(len(lines)):
