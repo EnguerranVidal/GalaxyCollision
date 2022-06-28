@@ -1,9 +1,10 @@
 import os
+import time
 
 import numpy as np
 import matplotlib.pyplot as plt
 
-from sources.common.other import sessionName
+from sources.common.other import sessionName, progressBar
 from sources.common.gravitation import gravitationalConstant
 from sources.common.generation import generateDisk2D
 from sources.galaxies import DiskGalaxy2D
@@ -112,9 +113,19 @@ class Simulator:
     def run(self, dt=0.1, T=10, method='EULER_SEMI_IMPLICIT'):
         if self.isNew:
             self.initializeLogs()
-        initial_time = self.simulatorTime
         print("########## Beginning Calculations ##########")
-        while self.simulatorTime < initial_time + T:
+        # Progress Bar Displaying
+        timeStamp0 = time.time()
+        step, limit = 0, int(T / dt)
+        progressBar(step, limit, 0, width=30)
+        # MAIN LOOP
+        for step in range(limit):
+            # Computation
             self.engine.compute(dt, method=method)
             self.simulatorTime = self.simulatorTime + dt
+            # Data Save
             self.saveState()
+            # Progress Bar Update
+            timeDelta = time.time() - timeStamp0
+            progressBar(step + 1, limit, timeDelta, width=30)
+        print("########## Calculations Finished ##########")

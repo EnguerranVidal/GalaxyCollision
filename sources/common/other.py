@@ -9,6 +9,16 @@ def String2FloatList(string):
     return L
 
 
+def progressBar(step, limit, deltaT, width=30):
+    percent = step / limit * 100
+    left = int(width * percent / 100)
+    right = width - left
+    print('\r[', '#' * left, ' ' * right, ']',
+          f' {percent:.0f}%', f'   {step:.0f}|{limit:.0f}',
+          f'   {deltaT:.2f} s',
+          sep='', end='', flush=True)
+
+
 def sessionName(separator=''):
     t0 = time.time()
     struct = time.localtime(t0)

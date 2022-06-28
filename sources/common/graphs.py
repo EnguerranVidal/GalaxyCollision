@@ -122,6 +122,8 @@ def createGIF2D(outputPath, fps=25, nImages=400, limits=(-10, 10)):
     parameters = loadInfo(clustersFile)
     simulatorDimension = max(parameters['DIMENSION'])
     nbSaves = min(parameters['NB_FRAMES'])
+    if nImages > nbSaves:
+        nImages = nbSaves
     nbClusters = len(parameters['DIMENSION'])
     ###### Creating Tags ######
     particlesTags = []
@@ -134,16 +136,20 @@ def createGIF2D(outputPath, fps=25, nImages=400, limits=(-10, 10)):
     with open(os.path.join(outputPath, 'ClustersPositions.txt'), "r") as file:
         data = loadState(file, simulatorDimension)
         clustersParticles = []
-        for i in range(nbClusters):
-            indices = particlesTags == i
+        for j in range(nbClusters):
+            indices = particlesTags == j
             X, Y = data[1][indices], data[2][indices]
-            darkMatterLimit = int(int(parameters['NB_PARTICLES'][i]) * float(parameters['DARK_MATTER'][i]) / 100)
+            darkMatterLimit = int(int(parameters['NB_PARTICLES'][j]) * float(parameters['DARK_MATTER'][j]) / 100)
             clustersParticles.append(ax.scatter(X[:darkMatterLimit], Y[:darkMatterLimit], s=5))
         fig.show()
         for i in range(nbSaves):
             data = loadState(file, simulatorDimension)
-            Offset = np.array([data[1], data[2]]).T
-            clustersParticles.set_offsets(Offset)
+            for j in range(nbClusters):
+                indices = particlesTags == j
+                X, Y = data[1][indices], data[2][indices]
+                darkMatterLimit = int(int(parameters['NB_PARTICLES'][j]) * float(parameters['DARK_MATTER'][j]) / 100)
+                Offset = np.array([X[:darkMatterLimit], Y[:darkMatterLimit]]).T
+                clustersParticles[j].set_offsets(Offset)
             plt.draw()
             fig.canvas.draw()
             if i % int(len(images) / nImages) == 0:

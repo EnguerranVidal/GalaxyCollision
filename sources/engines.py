@@ -227,7 +227,6 @@ class ClusterEngine2D:
             self.percentage = percentage
             self.acceleration = self.accelerationAltered
 
-
     def feedClusters(self, clusters):
         self.clusters = clusters
         self.loadObjects()
@@ -257,11 +256,20 @@ class ClusterEngine2D:
             massesA[j, :] = quadTree.forces(massesX[j, :])
         return massesA
 
-    @staticmethod
-    def accelerationAltered(massesX, massesM):
+    def accelerationAltered(self, massesX, massesM):
         massesA = np.zeros(massesX.shape)
         n = massesX.shape[0]
-        pass
+        limit = int(n * self.percentage / 100)
+        for i in range(n):
+            tags = np.concatenate([np.ones(shape=(limit,)), np.zeros(shape=(n - limit,))])
+            np.random.shuffle(tags)
+            for j in range(n):
+                if j != i and tags[j] == 1:
+                    vector = massesX[j, :] - massesX[i, :]
+                    distance = np.linalg.norm(vector)
+                    if distance != 0:
+                        massesA[i, :] += (self.gravitationCst * massesM[j] * vector) / (distance ** 3)
+        return massesA
 
     def compute(self, dt, method='EULER_EXPLICIT'):
         if method == 'EULER_EXPLICIT':
