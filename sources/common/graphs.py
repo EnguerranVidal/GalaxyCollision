@@ -11,14 +11,14 @@ from sources.common.generation import generateArms2D, generateDisk3D, generateDi
 
 def loadState(fileObject, dimension=3):
     data = []
-    line = fileObject.readline()
+    line = fileObject.readline().rstrip('\n')
     data.append(float(line))
     if dimension == 2:
         nbStateLines = 5
     else:
         nbStateLines = 7
     for i in range(1, nbStateLines):
-        line = fileObject.readline()
+        line = fileObject.readline().rstrip('\n')
         data.append(np.array(String2FloatList(line)))
     return data
 
@@ -26,12 +26,13 @@ def loadState(fileObject, dimension=3):
 def loadInfo(clustersFile):
     with open(clustersFile, 'r') as file:
         lines = [i.strip('\n') for i in file.readlines()]
-    header = lines[0].split('\t')
+    header = lines[0].split(' ')
     parameters = {parameter: [] for parameter in header}
     for i in range(1, len(lines)):
-        parametersLine = {}
-        line = lines[i].split('\t')
-
+        line = lines[i].split(' ')
+        print(line)
+        for j in range(len(line)):
+            parameters[header[j]].append(line[j])
     return parameters
 
 
@@ -115,25 +116,26 @@ def createGIF2D(outputPath, fps=25, nImages=400, limits=(-10, 10)):
     fig.patch.set_facecolor('xkcd:black')  # Changing figure to black
     ax = fig.add_subplot(111)
     ax.set_facecolor('xkcd:black')  # Changing background to black
-    plt.xlim(limits[0], limits[1])
-    plt.ylim(limits[0], limits[1])
+    #plt.xlim(limits[0], limits[1])
+    #plt.ylim(limits[0], limits[1])
     ###### Reading Configurations ######
-    clustersFile = os.path.join(outputPath, 'ClustersConfiguration.txt')
+    clustersFile = os.path.join(outputPath, 'ClustersConfiguration.config')
     parameters = loadInfo(clustersFile)
-    simulatorDimension = max(parameters['DIMENSION'])
-    nbSaves = min(parameters['NB_FRAMES'])
+    print(parameters)
+    simulatorDimension = max([int(parameter) for parameter in parameters['DIMENSION']])
+    nbSaves = min([int(parameter) for parameter in parameters['NB_FRAMES']])
     if nImages > nbSaves:
         nImages = nbSaves
     nbClusters = len(parameters['DIMENSION'])
     ###### Creating Tags ######
     particlesTags = []
     for i in range(nbClusters):
-        particlesTags = particlesTags + [i for j in range(parameters['NB_PARTICLES'][i])]
+        particlesTags = particlesTags + [i for j in range(int(parameters['NB_PARTICLES'][i]))]
     particlesTags = np.array(particlesTags)
     assert simulatorDimension == 2, 'Dimension Error : Simulator dimension should be 2, not ' + str(simulatorDimension)
     ###### Reading Positions ######
     print("########## DISPLAYING ##########")
-    with open(os.path.join(outputPath, 'ClustersPositions.txt'), "r") as file:
+    with open(os.path.join(outputPath, 'ClustersPositions.config'), "r") as file:
         data = loadState(file, simulatorDimension)
         clustersParticles = []
         for j in range(nbClusters):
@@ -142,7 +144,7 @@ def createGIF2D(outputPath, fps=25, nImages=400, limits=(-10, 10)):
             darkMatterLimit = int(int(parameters['NB_PARTICLES'][j]) * float(parameters['DARK_MATTER'][j]) / 100)
             clustersParticles.append(ax.scatter(X[:darkMatterLimit], Y[:darkMatterLimit], s=5))
         fig.show()
-        for i in range(nbSaves):
+        for i in range(nbSaves - 1):
             data = loadState(file, simulatorDimension)
             for j in range(nbClusters):
                 indices = particlesTags == j
@@ -150,12 +152,14 @@ def createGIF2D(outputPath, fps=25, nImages=400, limits=(-10, 10)):
                 darkMatterLimit = int(int(parameters['NB_PARTICLES'][j]) * float(parameters['DARK_MATTER'][j]) / 100)
                 Offset = np.array([X[:darkMatterLimit], Y[:darkMatterLimit]]).T
                 clustersParticles[j].set_offsets(Offset)
+            plt.pause(0.01)
             plt.draw()
             fig.canvas.draw()
-            if i % int(len(images) / nImages) == 0:
+            if i % int(nbSaves / nImages) == 0:
                 image = np.frombuffer(fig.canvas.tostring_rgb(), dtype='uint8')
                 image = image.reshape(fig.canvas.get_width_height()[::-1] + (3,))
                 images.append(image)
+        plt.close()
     print("########## GIF CREATION ##########")
     imageio.mimsave(gifPath, images, fps=fps)
     print("########## GIF FINISHED ##########")

@@ -62,9 +62,9 @@ class Simulator:
                 darkPercentage = str(self.clusters[i].darkPercentage)
                 initialX, initialV = '', ''
                 dimension = len(self.clusters[i].initPosition[0])
-                for j in range(self.simulatorDimension):
-                    initialX += str(self.clusters[i].initPosition[j]) + ','
-                    initialV += str(self.clusters[i].initVelocity[j]) + ','
+                for j in range(dimension):
+                    initialX += str(self.clusters[i].initPosition[0][j]) + ','
+                    initialV += str(self.clusters[i].initVelocity[0][j]) + ','
                 # Creating Line
                 line = name + ' ' + nbParticles + ' ' + darkPercentage + ' ' + initialX[:-1]
                 line += ' ' + initialV[:-1] + ' ' + str(dimension) + ' ' + str(self.nbSaves) + '\n'
@@ -78,8 +78,8 @@ class Simulator:
             self.saveState()
 
     def saveState(self):
-        ###### SAVE PARTICLES' POSITIONS ######
         modes = ['a', 'w']
+        ###### SAVE PARTICLES' POSITIONS ######
         X = self.engine.massesX[:, 0].tolist()
         Y = self.engine.massesX[:, 1].tolist()
         Vx = self.engine.massesV[:, 0].tolist()
@@ -113,6 +113,7 @@ class Simulator:
     def run(self, dt=0.1, T=10, method='EULER_SEMI_IMPLICIT'):
         if self.isNew:
             self.initializeLogs()
+            self.isNew = not self.isNew
         print("########## Beginning Calculations ##########")
         # Progress Bar Displaying
         timeStamp0 = time.time()
@@ -128,4 +129,4 @@ class Simulator:
             # Progress Bar Update
             timeDelta = time.time() - timeStamp0
             progressBar(step + 1, limit, timeDelta, width=30)
-        print("########## Calculations Finished ##########")
+        print("\n########## Calculations Finished ##########")

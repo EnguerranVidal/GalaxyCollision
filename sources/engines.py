@@ -1,5 +1,6 @@
 from sources.galaxies import *
 import sys
+import threading
 
 
 class OctTree:
@@ -120,26 +121,17 @@ class OctTree:
 
 
 class QuadTree:
-    def __init__(self, massesX, massesM, theta, limits=None):
-        if limits is None:
-            xMax = np.max(np.abs(massesX[:, 0])) * 1.01
-            yMax = np.max(np.abs(massesX[:, 1])) * 1.01
-            limits = (-xMax, xMax, -yMax, yMax)
-        if type(massesX) == list:
-            massesX = np.array(massesX)
-        if type(massesM) == list:
-            massesM = np.array(massesM)
-        self.massesX = massesX
-        self.massesM = massesM
-        self.gravitationCst = gravitationalConstant()
-        self.nbObjects = self.massesX.shape[0]
+    def __init__(self, theta, limits=None):
         self.children = [None, None, None, None]
+        self.massesX = None
+        self.massesM = None
+        self.gravitationCst = gravitationalConstant()
+        self.nbObjects = 0
         self.x1, self.x2, self.y1, self.y2 = limits[0], limits[1], limits[2], limits[3]
+        self.theta = theta
+        # Mass Center
         self.centreMassX = None
         self.centreMass = None
-        self.theta = theta
-        self.getCenter()
-        self.buildChildren()
 
     def getCenter(self):
         mc = np.sum(self.massesM)
@@ -148,37 +140,36 @@ class QuadTree:
         yc = np.sum(self.massesX[:, 1])
         self.centreMassX = np.array([xc, yc])
 
-    def buildChildren(self):
+    def insert(self, position, mass):
         # North : towards +Y, East : towards +X
         # Each list :  contains positions [0] and masses [1]
-        NW, NE, SW, SE = [[], []], [[], []], [[], []], [[], []]
         # Calculating middle points
         mx = (self.x1 + self.x2) / 2
         my = (self.y1 + self.y2) / 2
-        # Filling children recursively
-        for i in range(self.nbObjects):
-            if self.massesX[i, 0] > mx:  # East
-                if self.massesX[i, 1] > my:  # North
-                    NE[0].append(self.massesX[i, :])
-                    NE[1].append(self.massesM[i])
-                else:  # South
-                    SE[0].append(self.massesX[i, :])
-                    SE[1].append(self.massesM[i])
-            else:  # West
-                if self.massesX[i, 1] > my:  # North
-                    NW[0].append(self.massesX[i, :])
-                    NW[1].append(self.massesM[i])
-                else:  # South
-                    SW[0].append(self.massesX[i, :])
-                    SW[1].append(self.massesM[i])
-        if len(NE[0]) > 0:
-            self.children[0] = QuadTree(NE[0], NE[1], self.theta, (mx, self.x2, my, self.y2))
-        if len(SE[0]) > 0:
-            self.children[1] = QuadTree(SE[0], SE[1], self.theta, (mx, self.x2, self.y1, my))
-        if len(NW[0]) > 0:
-            self.children[2] = QuadTree(NW[0], NW[1], self.theta, (self.x1, mx, my, self.y2))
-        if len(SW[0]) > 0:
-            self.children[3] = QuadTree(SW[0], SW[1], self.theta, (self.x1, mx, self.y1, my))
+        ###### ADDING PARTICLE TO SELF ######
+        if self.nbObjects == 0:
+            self.massesM = np.array([mass])
+            self.massesX = np.array([position])
+        else:
+            self.children = [QuadTree(self.theta, (mx, self.x2, my, self.y2)),  # NE
+                             QuadTree(self.theta, (mx, self.x2, self.y1, my)),  # SE
+                             QuadTree(self.theta, (self.x1, mx, my, self.y2)),  # NW
+                             QuadTree(self.theta, (self.x1, mx, self.y1, my))]  # SW
+            np.append(self.massesM, mass, 0)
+            np.append(self.massesX, position, 0)
+            ###### ADDING PARTICLE TO CHILDREN ######
+            if position[0] > mx:  # East
+                if position[1] > my:  # North
+                    self.children[0].insert(position, mass)
+                else:                 # South
+                    self.children[1].insert(position, mass)
+            else:                 # West
+                if position[1] > my:  # North
+                    self.children[2].insert(position, mass)
+                else:                 # South
+                    self.children[3].insert(position, mass)
+        ###### RECALCULATING CENTRE OF MASS ######
+        self.getCenter()
 
     def forces(self, position):
         if not type(position).__module__ == np.__name__:
@@ -248,10 +239,15 @@ class ClusterEngine2D:
 
     def accelerationBarnesHut(self, massesX, massesM):
         """Defective"""
-        quadTree = QuadTree(massesX, massesM, self.theta)
+        xMax = np.max(np.abs(massesX[:, 0])) * 1.01
+        yMax = np.max(np.abs(massesX[:, 1])) * 1.01
+        limits = (-xMax, xMax, -yMax, yMax)
+        quadTree = QuadTree(self.theta, limits)
+        n = massesX.shape[0]
+        for i in range(n):
+            quadTree.insert(massesX[i, :], massesM[i])
         # Masses particles
         massesA = np.zeros(massesX.shape)
-        n = massesX.shape[0]
         for j in range(n):
             massesA[j, :] = quadTree.forces(massesX[j, :])
         return massesA
