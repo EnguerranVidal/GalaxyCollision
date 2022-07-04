@@ -8,17 +8,18 @@ from sources.common.other import sessionName, progressBar
 from sources.common.gravitation import gravitationalConstant
 from sources.common.generation import generateDisk2D
 from sources.galaxies import DiskGalaxy2D
-from sources.engines import ClusterEngine2D, QuadTree
+from sources.engines import ClusterEngine, QuadTree
 
 
 class Simulator:
-    def __init__(self, clusters, engine, path):
+    def __init__(self, clusters, path, mode='BARNES_HUT',
+                 softeningLength=1/10000, theta=1, percentage=50):
         self.execDir = path
-        self.engine = engine
         self.clusters = clusters
         self.nbClusters = len(self.clusters)
         self.tags = np.concatenate([np.full((self.clusters[i].nbParticles,), i) for i in range(len(self.clusters))])
         self.simulatorDimension = max([len(i.initPosition) for i in self.clusters])
+        self.engine = ClusterEngine(self.clusters, self.simulatorDimension, mode, softeningLength, theta, percentage)
         self.simulatorTime = 0
 
         ###### Data Save System ######
@@ -30,8 +31,8 @@ class Simulator:
         self.clustersFile = None
         self.simulationFile = None
 
-    def reset(self):
-        self.__init__(self.clusters, self.engine, self.execDir)
+    def reset(self, mode='BARNES_HUT', softeningLength=1/10000, theta=1, percentage=50):
+        self.__init__(self.clusters, self.execDir, mode, softeningLength, theta, percentage)
 
     def initializeLogs(self):
         if self.isNew:
@@ -46,7 +47,6 @@ class Simulator:
             massesLines = []
             for i in range(self.nbClusters):
                 massesLines.append([])
-                name = self.clusters[i].name
                 for j in range(self.clusters[i].nbParticles):
                     massesLines[i].append(str(self.clusters[i].masses[j]))
                 massesLines[i] = ' '.join(massesLines[i]) + '\n'

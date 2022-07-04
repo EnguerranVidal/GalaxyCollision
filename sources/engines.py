@@ -187,10 +187,11 @@ class QuadTree:
         return True
 
 
-class ClusterEngine2D:
-    def __init__(self, clusters=None, mode='BARNES_HUT', softeningLength=1/10000, theta=1, percentage=50):
+class ClusterEngine:
+    def __init__(self, clusters=None, dimension=2, mode='BARNES_HUT', softeningLength=1/10000, theta=1, percentage=50):
         self.gravitationCst = gravitationalConstant()
         self.mode = mode
+        self.dimension = dimension
         # Mass Clusters
         self.massesX, self.massesV, self.massesM = None, None, None
         self.nbMasses = 0
@@ -233,15 +234,20 @@ class ClusterEngine2D:
         """Defective"""
         xMax = np.max(np.abs(massesX[:, 0])) * 1.01
         yMax = np.max(np.abs(massesX[:, 1])) * 1.01
-        limits = (-xMax, xMax, -yMax, yMax)
-        quadTree = QuadTree(self.theta, limits, self.softLength)
+        if self.dimension == 2:
+            limits = (-xMax, xMax, -yMax, yMax)
+            bhTree = QuadTree(self.theta, limits, self.softLength)
+        elif self.dimension == 3:
+            zMax = np.max(np.abs(massesX[:, 2])) * 1.01
+            limits = (-xMax, xMax, -yMax, yMax, -zMax, zMax)
+            bhTree = OctTree(self.theta, limits, self.softLength)
         n = massesX.shape[0]
         for i in range(n):
-            quadTree.insert(massesX[i, :], massesM[i])
+            bhTree.insert(massesX[i, :], massesM[i])
         # Masses particles
         massesA = np.zeros(massesX.shape)
         for j in range(n):
-            massesA[j, :] = quadTree.forces(massesX[j, :])
+            massesA[j, :] = bhTree.forces(massesX[j, :])
         return massesA
 
     def accelerationAltered(self, massesX, massesM):
