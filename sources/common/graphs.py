@@ -57,18 +57,32 @@ def set_axes_equal(ax):
     ax.set_zlim3d([z_middle - plot_radius, z_middle + plot_radius])
 
 
-def plot2DVelDistribution(cluster):
+def plotVelDistribution(cluster):
+    """:type cluster: ObjectCluster2D"""
     n = cluster.positions.shape[0]
     radii, velocities = [], []
     for i in range(n):
         radii.append(np.linalg.norm(cluster.positions[i, :]))
         velocities.append(np.linalg.norm(cluster.velocities[i, :]))
-    print('Done')
-    fig = plt.figure(figsize=(10, 10))
-    fig.patch.set_facecolor('xkcd:black')  # Changing figure to black
-    ax = fig.add_subplot(111)
-    ax.set_facecolor('xkcd:black')  # Changing background to black
-    ax.scatter(radii[::10], velocities[::10], s=3, c='r')
+    plt.scatter(radii, velocities, s=3, c='r')
+    plt.show()
+
+
+def plotCumulativeMass(cluster):
+    """:type cluster: ObjectCluster2D"""
+    n = cluster.positions.shape[0]
+    X = cluster.positions
+    if cluster.positions.shape[1] == 3:
+        radii = np.sqrt(X[:, 0] ** 2 + X[:, 1] ** 2 + X[:, 2] ** 2)
+    else:
+        radii = np.sqrt(X[:, 0] ** 2 + X[:, 1] ** 2)
+
+    indices = radii.argsort()
+    print(indices)
+    masses = [cluster.masses[indices[0]]]
+    for i in range(1, n):
+        masses.append(masses[-1] + cluster.masses[indices[i]])
+    plt.scatter(np.sort(radii), masses, s=3, c='r')
     plt.show()
 
 

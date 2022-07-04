@@ -103,3 +103,44 @@ def generateArms2D(nbStars, nbArms, radius, armOffset, mass, rotFactor, gravityC
         velocities[i, 0] = velNorm * np.cos(angles[i])
         velocities[i, 0] = velNorm * np.sin(angles[i])
     return positions, velocities, masses
+
+
+#################### DISTRIBUTIONS ####################
+
+
+def randomDensityCustomDistribution(customDistribution, size=None, r0=1):
+    samples = []
+    while len(samples) < size:
+        x = np.random.uniform(low=0, high=r0)
+        prop = customDistribution(x)
+        assert 0 <= prop <= 1
+        if np.random.uniform(low=0, high=1) <= prop:
+            samples += [x]
+    return samples
+
+
+def uniformSphereDistribution(r, r0=1, M=1):
+    exteriorMask = r > r0
+    density = 3 * M / (4 * np.pi * r0 ** 3)
+    density[exteriorMask] = 0
+    return density
+
+
+def isothermalSphereDistribution(r, p0=1, r0=1):
+    density = p0 * (r / r0) ** (-2)
+    return density
+
+
+def sphericalPlummerDistribution(r, r0=1, M=1):
+    density = (3 * M) / (4 * np.pi) * (r0 ** 2) / (r0 ** 2 + r ** 2) ** (3 / 2)
+    return density
+
+
+def sphericalHernquistDistribution(r, r0=1, M=1):
+    density = M / (2 * np.pi) * r0 / (r * (r0 + r) ** 3)
+    return density
+
+
+def sphericalJaffeDistribution(r, r0=1, M=1):
+    density = M / (4 * np.pi) * r0 / (r ** 2 * (r0 + r) ** 2)
+    return density

@@ -35,10 +35,10 @@ class ObjectCluster2D:
     def initialState(self, xc, vc):
         if isinstance(xc, list):
             xc = np.array([xc])
-            xc = xc.reshape(2, )
+            xc = xc.reshape(xc.shape[1], )
         if isinstance(vc, list):
             vc = np.array([vc])
-            vc = vc.reshape(2, )
+            vc = vc.reshape(vc.shape[1], )
         xc = np.array([xc])
         vc = np.array([vc])
         self.initPosition = xc
