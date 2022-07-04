@@ -33,11 +33,11 @@ def generateDisk2D(nbStars, radius, mass, gravityCst, seed=None):
     velocities = np.zeros(shape=(nbStars, 2))
     masses = np.random.random((nbStars,)) * mass
     for i in range(nbStars):
-        mask = distances > distances[i]
+        mask = distances < distances[i]
         internalMass = np.sum(masses[mask])
-        velNorm = np.sqrt(gravityCst * internalMass / distances[i])
-        velocities[i, 0] = velNorm * np.cos(angles[i] + np.pi / 2)
-        velocities[i, 1] = velNorm * np.sin(angles[i] + np.pi / 2)
+        escVelocityNorm = np.sqrt(gravityCst * internalMass / distances[i])
+        velocities[i, 0] = escVelocityNorm * np.cos(angles[i] + np.pi / 2)
+        velocities[i, 1] = escVelocityNorm * np.sin(angles[i] + np.pi / 2)
     return positions, velocities, masses
 
 

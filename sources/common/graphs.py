@@ -57,6 +57,21 @@ def set_axes_equal(ax):
     ax.set_zlim3d([z_middle - plot_radius, z_middle + plot_radius])
 
 
+def plot2DVelDistribution(cluster):
+    n = cluster.positions.shape[0]
+    radii, velocities = [], []
+    for i in range(n):
+        radii.append(np.linalg.norm(cluster.positions[i, :]))
+        velocities.append(np.linalg.norm(cluster.velocities[i, :]))
+    print('Done')
+    fig = plt.figure(figsize=(10, 10))
+    fig.patch.set_facecolor('xkcd:black')  # Changing figure to black
+    ax = fig.add_subplot(111)
+    ax.set_facecolor('xkcd:black')  # Changing background to black
+    ax.scatter(radii[::10], velocities[::10], s=3, c='r')
+    plt.show()
+
+
 def plotGalaxyDisk2D(nbStars=1000, percentage=35):
     fig = plt.figure(figsize=(10, 10))
     fig.patch.set_facecolor('xkcd:black')  # Changing figure to black
@@ -108,7 +123,7 @@ def plotGalaxyDisk3D(nbStars=1000, percentage=35):
     plt.show()
 
 
-def createGIF2D(outputPath, fps=25, nImages=400, limits=(-10, 10)):
+def createGIF2D(outputPath, fps=25, nImages=400, size=10):
     gifName = os.path.basename(outputPath) + '.gif'
     gifPath = os.path.join(outputPath, gifName)
     images = []
@@ -116,8 +131,8 @@ def createGIF2D(outputPath, fps=25, nImages=400, limits=(-10, 10)):
     fig.patch.set_facecolor('xkcd:black')  # Changing figure to black
     ax = fig.add_subplot(111)
     ax.set_facecolor('xkcd:black')  # Changing background to black
-    #plt.xlim(limits[0], limits[1])
-    #plt.ylim(limits[0], limits[1])
+    plt.xlim(-size, size)
+    plt.ylim(-size, size)
     ###### Reading Configurations ######
     clustersFile = os.path.join(outputPath, 'ClustersConfiguration.config')
     parameters = loadInfo(clustersFile)

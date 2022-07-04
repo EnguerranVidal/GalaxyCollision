@@ -1,3 +1,5 @@
+import numpy as np
+
 from sources.galaxies import *
 import sys
 import threading
@@ -121,7 +123,7 @@ class OctTree:
 
 
 class QuadTree:
-    def __init__(self, theta, limits=None):
+    def __init__(self, theta, limits=None, softLength=1/10**4):
         self.children = [None, None, None, None]
         self.massesX = None
         self.massesM = None
@@ -129,16 +131,19 @@ class QuadTree:
         self.nbObjects = 0
         self.x1, self.x2, self.y1, self.y2 = limits[0], limits[1], limits[2], limits[3]
         self.theta = theta
+        self.softLength = softLength
         # Mass Center
-        self.centreMassX = None
-        self.centreMass = None
+        self.centreMassX = 0
+        self.centreMass = np.array([0, 0])
 
     def getCenter(self):
-        mc = np.sum(self.massesM)
-        self.centreMass = mc
-        xc = np.sum(self.massesX[:, 0])
-        yc = np.sum(self.massesX[:, 1])
-        self.centreMassX = np.array([xc, yc])
+        Mc = np.sum(self.massesM)
+        self.centreMass = Mc
+        if Mc != 0:
+            Rc = np.array([0.0, 0.0])
+            for i in range(self.nbObjects):
+                Rc += self.massesM[i] * self.massesX[i, :]
+            self.centreMassX = Rc / Mc
 
     def insert(self, position, mass):
         # North : towards +Y, East : towards +X
@@ -151,12 +156,12 @@ class QuadTree:
             self.massesM = np.array([mass])
             self.massesX = np.array([position])
         else:
-            self.children = [QuadTree(self.theta, (mx, self.x2, my, self.y2)),  # NE
-                             QuadTree(self.theta, (mx, self.x2, self.y1, my)),  # SE
-                             QuadTree(self.theta, (self.x1, mx, my, self.y2)),  # NW
-                             QuadTree(self.theta, (self.x1, mx, self.y1, my))]  # SW
-            np.append(self.massesM, mass, 0)
-            np.append(self.massesX, position, 0)
+            self.children = [QuadTree(self.theta, (mx, self.x2, my, self.y2), self.softLength),  # NE
+                             QuadTree(self.theta, (mx, self.x2, self.y1, my), self.softLength),  # SE
+                             QuadTree(self.theta, (self.x1, mx, my, self.y2), self.softLength),  # NW
+                             QuadTree(self.theta, (self.x1, mx, self.y1, my), self.softLength)]  # SW
+            self.massesM = np.append(self.massesM, np.array([mass]), 0)
+            self.massesX = np.vstack([self.massesX, position])
             ###### ADDING PARTICLE TO CHILDREN ######
             if position[0] > mx:  # East
                 if position[1] > my:  # North
@@ -169,6 +174,7 @@ class QuadTree:
                 else:                 # South
                     self.children[3].insert(position, mass)
         ###### RECALCULATING CENTRE OF MASS ######
+        self.nbObjects += 1
         self.getCenter()
 
     def forces(self, position):
@@ -180,15 +186,15 @@ class QuadTree:
         if distance != 0:
             ratio = width / distance
             if ratio < self.theta or self.allNoneChildren():
-                acceleration = (self.gravitationCst * self.centreMass * vector) / (distance ** 3)
+                acceleration = (self.gravitationCst * self.centreMass * vector) / (distance + self.softLength) ** 3
                 return acceleration
             else:
-                acceleration = np.array([0, 0])
+                acceleration = np.array([0.0, 0.0])
                 for i in self.children:
-                    if isinstance(i, QuadTree):
+                    if isinstance(i, QuadTree) and i.nbObjects != 0:
                         acceleration += i.forces(position)
         else:
-            return np.array([0, 0, 0])
+            return np.array([0, 0])
 
     def allNoneChildren(self):
         for i in self.children:
@@ -198,7 +204,7 @@ class QuadTree:
 
 
 class ClusterEngine2D:
-    def __init__(self, clusters=None, mode='BARNES_HUT', theta=1, percentage=50):
+    def __init__(self, clusters=None, mode='BARNES_HUT', softeningLength=1/10000, theta=1, percentage=50):
         self.gravitationCst = gravitationalConstant()
         self.mode = mode
         # Mass Clusters
@@ -207,6 +213,8 @@ class ClusterEngine2D:
         # Engine Variables
         self.quadTree = None
         self.theta = None
+        self.percentage = None
+        self.softLength = softeningLength
         # Loading Clusters
         self.clusters = None
         if type(clusters) == list:
@@ -242,7 +250,7 @@ class ClusterEngine2D:
         xMax = np.max(np.abs(massesX[:, 0])) * 1.01
         yMax = np.max(np.abs(massesX[:, 1])) * 1.01
         limits = (-xMax, xMax, -yMax, yMax)
-        quadTree = QuadTree(self.theta, limits)
+        quadTree = QuadTree(self.theta, limits, self.softLength)
         n = massesX.shape[0]
         for i in range(n):
             quadTree.insert(massesX[i, :], massesM[i])
@@ -264,7 +272,7 @@ class ClusterEngine2D:
                     vector = massesX[j, :] - massesX[i, :]
                     distance = np.linalg.norm(vector)
                     if distance != 0:
-                        massesA[i, :] += (self.gravitationCst * massesM[j] * vector) / (distance ** 3)
+                        massesA[i, :] += (self.gravitationCst * massesM[j] * vector) / (distance + self.softLength) ** 3
         return massesA
 
     def compute(self, dt, method='EULER_EXPLICIT'):
@@ -285,8 +293,11 @@ class ClusterEngine2D:
 
     def computeEulerSemiImplicit(self, dt):
         # Calculating new positions
-        newV = self.massesV + dt * self.acceleration(self.massesX, self.massesM)
+        A = self.acceleration(self.massesX, self.massesM)
+        newV = self.massesV + dt * A
         newX = self.massesX + dt * newV
+        print(np.linalg.norm(A))
+        print(np.linalg.norm(self.massesV))
         # Updating positions
         self.massesX = newX
         self.massesV = newV
