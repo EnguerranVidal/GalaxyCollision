@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.stats import rv_continuous
 
 from sources.common.gravitation import *
 
@@ -31,7 +32,8 @@ def generateDisk2D(nbStars, radius, mass, gravityCst, seed=None):
 
     # Calculating speeds
     velocities = np.zeros(shape=(nbStars, 2))
-    masses = np.random.random((nbStars,)) * mass
+    masses = np.random.random((nbStars,))
+    masses = masses * mass / np.sum(masses)
     for i in range(nbStars):
         mask = distances < distances[i]
         internalMass = np.sum(masses[mask])
@@ -56,7 +58,8 @@ def generateDisk3D(nbStars, radius, mass, zOffsetMax, gravityCst, seed=None):
 
     # Calculating speeds
     velocities = np.zeros(shape=(nbStars, 3))
-    masses = np.random.random((nbStars,)) * mass
+    masses = np.random.random((nbStars,))
+    masses = masses * mass / np.sum(masses)
     for i in range(nbStars):
         mask = distances > distances[i]
         internalMass = np.sum(masses[mask])
@@ -67,57 +70,27 @@ def generateDisk3D(nbStars, radius, mass, zOffsetMax, gravityCst, seed=None):
     return positions, velocities, masses
 
 
-def generateArms2D(nbStars, nbArms, radius, armOffset, mass, rotFactor, gravityCst, seed=None):
-    np.random.seed(seed)
-    armSeparationDistance = 2 * np.pi / nbArms
-    distances = np.random.random((nbStars,)) ** 2
-    angles = np.random.random((nbStars,)) * 2 * np.pi
-
-    # Calculating arm offsets
-    armOffsets = np.random.random((nbStars,)) * armOffset
-    armOffsets = armOffsets - armOffset / 2
-    armOffsets = armOffsets / distances
-    squaredArmOffsets = armOffsets ** 2
-    mask = armOffsets < 0
-    squaredArmOffsets[mask] = -1 * squaredArmOffsets[mask]
-    armOffsets = squaredArmOffsets
-
-    # Rotation angles
-    rotations = distances * rotFactor
-    for i in range(nbStars):
-        angles[i] = int(angles[i] / armSeparationDistance)
-    angles = angles * armSeparationDistance + armOffsets + rotations
-
-    # Calculating positions
-    positions = np.zeros(shape=(nbStars, 2))
-    positions[:, 0] = np.cos(angles) * distances * radius
-    positions[:, 1] = np.sin(angles) * distances * radius
+def generateUniformSphere(nbStars, radius, mass, G,  seed=None):
+    """https://stackoverflow.com/questions/5408276/sampling-uniformly-distributed-
+    random-points-inside-a-spherical-volume"""
+    rng = np.random.default_rng(seed)
+    positions = rng.normal(size=(nbStars, 3))
+    normalize_radii = np.linalg.norm(positions, axis=1)[:, np.newaxis]
+    positions /= normalize_radii
+    uniform_points = rng.uniform(size=nbStars)[:, np.newaxis]
+    new_radii = np.power(uniform_points, 1 / 3)
+    positions *= new_radii
+    positions = positions * radius
 
     # Calculating speeds
-    velocities = np.zeros(shape=(nbStars, 2))
-    masses = np.random.random((nbStars,)) * mass
-    for i in range(nbStars):
-        mask = distances > distances[i]
-        internalMass = np.sum(masses[mask])
-        velNorm = np.sqrt(gravityCst * internalMass / distances[i])
-        velocities[i, 0] = velNorm * np.cos(angles[i])
-        velocities[i, 0] = velNorm * np.sin(angles[i])
+    velocities = np.zeros(shape=(nbStars, 3))
+    masses = np.random.random((nbStars,))
+    masses = masses * mass / np.sum(masses)
+
     return positions, velocities, masses
 
 
 #################### DISTRIBUTIONS ####################
-
-
-def randomDensityCustomDistribution(customDistribution, size=None, r0=1):
-    samples = []
-    while len(samples) < size:
-        x = np.random.uniform(low=0, high=r0)
-        prop = customDistribution(x)
-        assert 0 <= prop <= 1
-        if np.random.uniform(low=0, high=1) <= prop:
-            samples += [x]
-    return samples
-
 
 def uniformSphereDistribution(r, r0=1, M=1):
     exteriorMask = r > r0

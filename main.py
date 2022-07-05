@@ -3,7 +3,10 @@ from sources.engines import *
 from sources.simulators import *
 from sources.common.graphs import *
 
+
 try:
+    import matplotlib
+    matplotlib.use("TkAgg")
     import cupy as np
     print('CUPY VERSION DETECTED')
 except ImportError:
@@ -11,8 +14,12 @@ except ImportError:
 
 
 def testGeneration():
-    galaxy = DiskGalaxy2D('MILKY_WAY', 1000, 1, 75, mass=1)
-    plot2DVelDistribution(galaxy)
+    galaxy = DiskGalaxy3D('MILKY_WAY', 10000)
+    plotCumulativeMass(galaxy)
+
+
+def testUniform():
+    plotUniformSphere()
 
 
 def singleGalaxyTest():

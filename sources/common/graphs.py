@@ -6,7 +6,7 @@ import imageio
 
 from sources.common.other import String2FloatList
 from sources.common.gravitation import gravitationalConstant
-from sources.common.generation import generateArms2D, generateDisk3D, generateDisk2D
+from sources.common.generation import generateDisk3D, generateDisk2D, generateUniformSphere
 
 
 def loadState(fileObject, dimension=3):
@@ -102,19 +102,6 @@ def plotGalaxyDisk2D(nbStars=1000, percentage=35):
     plt.show()
 
 
-def plotGalaxyArms2D(nbStars=1000):
-    fig = plt.figure(figsize=(10, 10))
-    fig.patch.set_facecolor('xkcd:black')  # Changing figure to black
-    ax = fig.add_subplot(111)
-    ax.set_facecolor('xkcd:black')  # Changing background to black
-    G = gravitationalConstant()
-    positions, velocities, masses = generateArms2D(nbStars, 5, 1, 5, 3, 1, G)
-    X = positions[:, 0]
-    Y = positions[:, 1]
-    ax.scatter(X, Y, s=5)
-    plt.show()
-
-
 def plotGalaxyDisk3D(nbStars=1000, percentage=35):
     fig = plt.figure(figsize=(10, 10))
     fig.patch.set_facecolor('xkcd:black')  # Changing figure to black
@@ -131,6 +118,29 @@ def plotGalaxyDisk3D(nbStars=1000, percentage=35):
     Z_dark = positions[int(nbStars * percentage / 100):, 2]
 
     ax.scatter(X_dark, Y_dark, Z_dark, s=10, c='b', alpha=0.3)
+    ax.scatter(X_bary, Y_bary, Z_bary, s=3, c='r')
+    set_axes_equal(ax)
+    plt.axis('off')
+    plt.show()
+
+
+def plotUniformSphere(nbStars=1000, percentage=35):
+    fig = plt.figure(figsize=(10, 10))
+    fig.patch.set_facecolor('xkcd:black')  # Changing figure to black
+    ax = fig.add_subplot(projection='3d')
+    ax.set_facecolor('xkcd:black')  # Changing background to black
+    G = gravitationalConstant()
+    positions, masses, velocities = generateUniformSphere(1000, 1)
+    print(positions.shape)
+
+    X_bary = positions[:int(nbStars * percentage / 100), 0]
+    Y_bary = positions[:int(nbStars * percentage / 100), 1]
+    Z_bary = positions[:int(nbStars * percentage / 100), 2]
+    X_dark = positions[int(nbStars * percentage / 100):, 0]
+    Y_dark = positions[int(nbStars * percentage / 100):, 1]
+    Z_dark = positions[int(nbStars * percentage / 100):, 2]
+
+    ax.scatter(X_dark, Y_dark, Z_dark, s=10, c='b', alpha=0.2)
     ax.scatter(X_bary, Y_bary, Z_bary, s=3, c='r')
     set_axes_equal(ax)
     plt.axis('off')
