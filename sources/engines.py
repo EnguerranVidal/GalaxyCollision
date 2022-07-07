@@ -96,6 +96,7 @@ class OctTree:
                 for i in self.children:
                     if isinstance(i, OctTree) and i.nbObjects != 0:
                         acceleration += i.forces(position)
+                return acceleration
         else:
             return np.array([0, 0, 0])
 
@@ -177,6 +178,7 @@ class QuadTree:
                 for i in self.children:
                     if isinstance(i, QuadTree) and i.nbObjects != 0:
                         acceleration += i.forces(position)
+                return acceleration
         else:
             return np.array([0, 0])
 
@@ -188,7 +190,7 @@ class QuadTree:
 
 
 class ClusterEngine:
-    def __init__(self, clusters=None, dimension=2, mode='BARNES_HUT', softeningLength=1/10000, theta=1, percentage=50):
+    def __init__(self, clusters=None, dimension=2, mode='DEFAULT', softeningLength=1/10000, theta=1, percentage=50):
         self.gravitationCst = gravitationalConstant()
         self.mode = mode
         self.dimension = dimension
@@ -210,6 +212,8 @@ class ClusterEngine:
         elif mode == 'ALTERED':
             self.percentage = percentage
             self.acceleration = self.accelerationAltered
+        else:
+            self.acceleration = self.accelerationDefault
 
     def feedClusters(self, clusters):
         self.clusters = clusters
@@ -228,16 +232,25 @@ class ClusterEngine:
         self.massesV = np.concatenate(massesV)
         self.massesM = np.concatenate(massesM)
         self.nbMasses = self.massesX.shape[0]
-        sys.setrecursionlimit(self.nbMasses * 10)
+
+    def accelerationDefault(self, massesX, massesM):
+        massesA = np.zeros(massesX.shape)
+        n = massesX.shape[0]
+        for i in range(n):
+            for j in range(n):
+                if j != i:
+                    vector = massesX[j, :] - massesX[i, :]
+                    distance = np.linalg.norm(vector)
+                    if distance != 0:
+                        massesA[i, :] += (self.gravitationCst * massesM[j] * vector) / (distance + self.softLength) ** 3
+        return massesA
 
     def accelerationBarnesHut(self, massesX, massesM):
-        """Defective"""
         xMax = np.max(np.abs(massesX[:, 0])) * 1.01
         yMax = np.max(np.abs(massesX[:, 1])) * 1.01
-        if self.dimension == 2:
-            limits = (-xMax, xMax, -yMax, yMax)
-            bhTree = QuadTree(self.theta, limits, self.softLength)
-        elif self.dimension == 3:
+        limits = (-xMax, xMax, -yMax, yMax)
+        bhTree = QuadTree(self.theta, limits, self.softLength)
+        if self.dimension == 3:
             zMax = np.max(np.abs(massesX[:, 2])) * 1.01
             limits = (-xMax, xMax, -yMax, yMax, -zMax, zMax)
             bhTree = OctTree(self.theta, limits, self.softLength)
@@ -286,8 +299,6 @@ class ClusterEngine:
         A = self.acceleration(self.massesX, self.massesM)
         newV = self.massesV + dt * A
         newX = self.massesX + dt * newV
-        print(np.linalg.norm(A))
-        print(np.linalg.norm(self.massesV))
         # Updating positions
         self.massesX = newX
         self.massesV = newV

@@ -18,7 +18,7 @@ class Simulator:
         self.clusters = clusters
         self.nbClusters = len(self.clusters)
         self.tags = np.concatenate([np.full((self.clusters[i].nbParticles,), i) for i in range(len(self.clusters))])
-        self.simulatorDimension = max([len(i.initPosition) for i in self.clusters])
+        self.simulatorDimension = max([i.initPosition.shape[1] for i in self.clusters])
         self.engine = ClusterEngine(self.clusters, self.simulatorDimension, mode, softeningLength, theta, percentage)
         self.simulatorTime = 0
 

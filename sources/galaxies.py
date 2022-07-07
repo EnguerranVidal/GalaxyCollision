@@ -61,7 +61,7 @@ class DiskGalaxy2D(ObjectCluster):
 class UniformSphericalCluster3D(ObjectCluster):
     def __init__(self, name, nbStars=1000, radius=1, darkPercentage=75, mass=1, seed=None):
         gravConst = gravitationalConstant()
-        positions, velocities, masses = generateUniformSphere(nbStars, radius, mass, gravConst, seed=None)
+        positions, velocities, masses = generateUniformSphere(nbStars, radius, mass, gravConst, seed)
         super().__init__(name, positions, velocities, masses, darkPercentage)
 
 

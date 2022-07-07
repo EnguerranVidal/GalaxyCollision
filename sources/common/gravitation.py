@@ -2,7 +2,7 @@ import numpy as np
 
 
 def gravitationalConstant():
-    return 4.302e-3  # pc(M_solar)^-1 (km/s)^2
+    return 1  # pc(M_solar)^-1 (km/s)^2
 
 
 def initial_trajectory(periapsis, eccentricity, trueAnomaly, mass):

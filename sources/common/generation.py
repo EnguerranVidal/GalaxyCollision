@@ -63,14 +63,14 @@ def generateDisk3D(nbStars, radius, mass, zOffsetMax, gravityCst, seed=None):
     for i in range(nbStars):
         mask = distances > distances[i]
         internalMass = np.sum(masses[mask])
-        velNorm = np.sqrt(gravityCst * internalMass / distances[i])
-        velocities[i, 0] = velNorm * np.cos(angles[i])
-        velocities[i, 1] = velNorm * np.sin(angles[i])
+        velNorm = np.sqrt(gravityCst * internalMass / distances[i]) / 2
+        velocities[i, 0] = velNorm * np.cos(angles[i] + np.pi / 2)
+        velocities[i, 1] = velNorm * np.sin(angles[i] + np.pi / 2)
         velocities[i, 2] = np.zeros_like(velocities[i, 2])
     return positions, velocities, masses
 
 
-def generateUniformSphere(nbStars, radius, mass, G,  seed=None):
+def generateUniformSphere(nbStars=1000, radius=1, mass=1, gravityCst=1,  seed=None):
     """https://stackoverflow.com/questions/5408276/sampling-uniformly-distributed-
     random-points-inside-a-spherical-volume"""
     rng = np.random.default_rng(seed)
@@ -82,11 +82,13 @@ def generateUniformSphere(nbStars, radius, mass, G,  seed=None):
     positions *= new_radii
     positions = positions * radius
 
-    # Calculating speeds
-    velocities = np.zeros(shape=(nbStars, 3))
+    # Calculating masses
     masses = np.random.random((nbStars,))
     masses = masses * mass / np.sum(masses)
 
+    # Calculating velocities
+    velocities = np.zeros(shape=(nbStars, 3))
+    distances = np.sqrt(positions[:, 0] ** 2 + positions[:, 1] ** 2 + positions[:, 2] ** 2)
     return positions, velocities, masses
 
 

@@ -151,7 +151,7 @@ def createGIF2D(outputPath, fps=25, nImages=400, size=10):
     gifName = os.path.basename(outputPath) + '.gif'
     gifPath = os.path.join(outputPath, gifName)
     images = []
-    fig = plt.figure(figsize=(10, 10))
+    fig = plt.figure(figsize=(5, 5))
     fig.patch.set_facecolor('xkcd:black')  # Changing figure to black
     ax = fig.add_subplot(111)
     ax.set_facecolor('xkcd:black')  # Changing background to black
@@ -202,6 +202,90 @@ def createGIF2D(outputPath, fps=25, nImages=400, size=10):
     print("########## GIF CREATION ##########")
     imageio.mimsave(gifPath, images, fps=fps)
     print("########## GIF FINISHED ##########")
+
+
+def showcase2D(outputPath):
+    fig = plt.figure(figsize=(5, 5))
+    fig.patch.set_facecolor('xkcd:black')  # Changing figure to black
+    ax = fig.add_subplot(111)
+    ax.set_facecolor('xkcd:black')  # Changing background to black
+    ###### Reading Configurations ######
+    clustersFile = os.path.join(outputPath, 'ClustersConfiguration.config')
+    parameters = loadInfo(clustersFile)
+    simulatorDimension = max([int(parameter) for parameter in parameters['DIMENSION']])
+    nbSaves = min([int(parameter) for parameter in parameters['NB_FRAMES']])
+    nbClusters = len(parameters['DIMENSION'])
+    ###### Creating Tags ######
+    particlesTags = []
+    for i in range(nbClusters):
+        particlesTags = particlesTags + [i for j in range(int(parameters['NB_PARTICLES'][i]))]
+    particlesTags = np.array(particlesTags)
+    ###### Reading Positions ######
+    print("########## DISPLAYING ##########")
+    with open(os.path.join(outputPath, 'ClustersPositions.config'), "r") as file:
+        data = loadState(file, simulatorDimension)
+        graphs = []
+        for j in range(nbClusters):
+            indices = particlesTags == j
+            X, Y = data[1][indices], data[2][indices]
+            darkMatterLimit = int(int(parameters['NB_PARTICLES'][j]) * float(parameters['DARK_MATTER'][j]) / 100)
+            graphs.append(ax.scatter(X[:darkMatterLimit], Y[:darkMatterLimit], s=5))
+        plt.axis('off')
+        fig.show()
+        plt.pause(1)
+        for i in range(nbSaves - 1):
+            data = loadState(file, simulatorDimension)
+            for j in range(nbClusters):
+                indices = particlesTags == j
+                X, Y = data[1][indices], data[2][indices]
+                darkMatterLimit = int(int(parameters['NB_PARTICLES'][j]) * float(parameters['DARK_MATTER'][j]) / 100)
+                Offset = np.array([X[:darkMatterLimit], Y[:darkMatterLimit]]).T
+                graphs[j].set_offsets(Offset)
+            plt.pause(0.01)
+            plt.draw()
+        plt.close()
+
+
+def showcase3D(outputPath):
+    fig = plt.figure(figsize=(5, 5))
+    # fig.patch.set_facecolor('xkcd:black')  # Changing figure to black
+    ax = fig.add_subplot(projection='3d')
+    # ax.set_facecolor('xkcd:black')  # Changing background to black
+    ###### Reading Configurations ######
+    clustersFile = os.path.join(outputPath, 'ClustersConfiguration.config')
+    parameters = loadInfo(clustersFile)
+    simulatorDimension = max([int(parameter) for parameter in parameters['DIMENSION']])
+    nbSaves = min([int(parameter) for parameter in parameters['NB_FRAMES']])
+    nbClusters = len(parameters['DIMENSION'])
+    ###### Creating Tags ######
+    particlesTags = []
+    for i in range(nbClusters):
+        particlesTags = particlesTags + [i for j in range(int(parameters['NB_PARTICLES'][i]))]
+    particlesTags = np.array(particlesTags)
+    ###### Reading Positions ######
+    print("########## DISPLAYING ##########")
+    with open(os.path.join(outputPath, 'ClustersPositions.config'), "r") as file:
+        data = loadState(file, simulatorDimension)
+        graphs = []
+        for j in range(nbClusters):
+            indices = particlesTags == j
+            X, Y, Z = data[1][indices], data[2][indices], data[3][indices]
+            darkMatterLimit = int(int(parameters['NB_PARTICLES'][j]) * float(parameters['DARK_MATTER'][j]) / 100)
+            graphs.append(ax.scatter(X[:darkMatterLimit], Y[:darkMatterLimit], Z[:darkMatterLimit], s=5))
+        set_axes_equal(ax)
+        # plt.axis('off')
+        fig.show()
+        plt.pause(1)
+        for i in range(nbSaves - 1):
+            data = loadState(file, simulatorDimension)
+            for j in range(nbClusters):
+                indices = particlesTags == j
+                X, Y, Z = data[1][indices], data[2][indices], data[3][indices]
+                darkMatterLimit = int(int(parameters['NB_PARTICLES'][j]) * float(parameters['DARK_MATTER'][j]) / 100)
+                graphs[j]._offsets3d = (X[:darkMatterLimit], Y[:darkMatterLimit], Z[:darkMatterLimit])
+            plt.pause(0.01)
+            plt.draw()
+        plt.close()
 
 
 def createMP42D(outputPath, fps=25, duration=15, limits=(10, 10)):
