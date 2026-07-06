@@ -24,15 +24,15 @@ class NewtonCalculator(Calculator):
 
     def computeAccelerations(self, positions, masses):
         n = len(positions)
-        dim = positions.shape[1]
-        accelerations = cp.zeros((n, dim), dtype=cp.float64)
+        dimension = positions.shape[1]
+        accelerations = cp.zeros((n, dimension), dtype=cp.float64)
         for i in range(n):
-            dx = positions[i + 1:] - positions[i]
-            distSq = cp.sum(dx ** 2, axis=1) + self.softening ** 2
-            dist = cp.sqrt(distSq)
-            forceMag = masses[i + 1:] / distSq
-            accelerations[i] += cp.sum(forceMag[:, None] * dx / dist[:, None], axis=0)
-            accelerations[i + 1:] -= (forceMag[:, None] * dx / dist[:, None]) * (masses[i] / masses[i + 1:])[:, None]
+            xDistance = positions[i + 1:] - positions[i]
+            distSquared = cp.sum(xDistance ** 2, axis=1) + self.softening ** 2
+            distance = cp.sqrt(distSquared)
+            forceMagnitude = masses[i + 1:] / distSquared
+            accelerations[i] += cp.sum(forceMagnitude[:, None] * xDistance / distance[:, None], axis=0)
+            accelerations[i + 1:] -= (forceMagnitude[:, None] * xDistance / distance[:, None]) * (masses[i] / masses[i + 1:])[:, None]
         return accelerations * self.gravitationalConstant
 
 
@@ -48,13 +48,11 @@ class Node:
         self.isLeaf = True
 
 
-class BarnesHutCalculator:
-    def __init__(self, theta=0.5, gravitationalConstant=1.0, is3D=True):
+class BarnesHutCalculator(Calculator):
+    def __init__(self, gravitationalConstant=1.0, is3D=True, theta=0.5):
+        super().__init__(gravitationalConstant=gravitationalConstant, is3D=is3D)
         self.theta = theta
-        self.gravitationalConstant = gravitationalConstant
-        self.is3D = is3D
         self.root = None
-        self.softening = 1e-3
 
     def buildTree(self, positions, masses):
         n = len(positions)
