@@ -1,6 +1,6 @@
 import cupy as cp
 from src.core.engine.integrators import EulerExplicit, RK4
-from src.core.engine.calculators import BarnesHutCalculator
+from src.core.engine.calculators import BarnesHutCalculator, NewtonCalculator
 from src.core.engine.initializers import Initializer
 from src.core.engine.parameters import SimulatorParameters
 
@@ -12,8 +12,8 @@ class NBodySimulator:
         self.gravitationalConstant = params.gravitationalConstant
         self.is3D = self._getIs3D()
         self.initializer = Initializer(gravitationalConstant=self.gravitationalConstant)
-        self.calculator = BarnesHutCalculator(theta=params.theta, gravitationalConstant=self.gravitationalConstant, is3D=self.is3D)
-        self.integrator = self._createIntegrator(params.integratorType, self.timeStep)
+        self.calculator = self._createCalculator(params)
+        self.integrator = self._createIntegrator(params)
         self.positions, self.velocities = None, None
         self.masses = None
         self.time = 0.0
@@ -25,12 +25,20 @@ class NBodySimulator:
             return self.params.galaxyDistributionParameters.is3D
 
     @staticmethod
-    def _createIntegrator(integratorType: str, timeStep: float):
-        integratorType = integratorType.upper()
+    def _createIntegrator(params: SimulatorParameters):
+        integratorType = params.integratorType.upper()
         if integratorType == "EULER_EXPLICIT":
-            return EulerExplicit(timeStep)
+            return EulerExplicit(params.timeStep)
         else:
-            return RK4(timeStep)
+            return RK4(params.timeStep)
+
+    @staticmethod
+    def _createCalculator(params: SimulatorParameters):
+        calculatorType = params.calculatorType.upper()
+        if calculatorType == "BARNES_HUT":
+            return BarnesHutCalculator(theta=params.theta, gravitationalConstant=params.gravitationalConstant, is3D=params.is3D)
+        else:
+            return NewtonCalculator(gravitationalConstant=params.gravitationalConstant, is3D=params.is3D)
 
     def initialize(self):
         distributionType = self.params.distributionType.lower()

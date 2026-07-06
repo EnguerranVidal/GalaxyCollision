@@ -25,14 +25,16 @@ class GalaxyDistributionParameters:
 class SimulatorParameters:
     timeStep: float = 0.001
     theta: float = 0.5
+    is3D = True
     gravitationalConstant: float = 1.0
     integratorType: str = "RK4"
-    distributionType: str = "galaxy"
+    distributionType: str = "GALAXY"
+    calculatorType: str = "BARNES-HUT"
     basicDistributionParameters: Optional[BasicDistributionParameters] = None
     galaxyDistributionParameters: Optional[GalaxyDistributionParameters] = None
 
     def __post_init__(self):
         if self.distributionType.lower() == "basic" and self.basicDistributionParameters is None:
-            self.basicDistributionParameters = BasicDistributionParameters()
+            self.basicDistributionParameters = BasicDistributionParameters(is3D=self.is3D)
         elif self.distributionType.lower() == "galaxy" and self.galaxyDistributionParameters is None:
-            self.galaxyDistributionParameters = GalaxyDistributionParameters()
+            self.galaxyDistributionParameters = GalaxyDistributionParameters(is3D=self.is3D)

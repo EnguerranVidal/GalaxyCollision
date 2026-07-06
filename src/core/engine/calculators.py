@@ -1,4 +1,39 @@
 import cupy as cp
+from abc import ABC, abstractmethod
+
+
+class Calculator(ABC):
+    def __init__(self, gravitationalConstant: float = 1.0, is3D: bool = True):
+        self.gravitationalConstant = gravitationalConstant
+        self.is3D = is3D
+        self.softening = 1e-3
+
+    @abstractmethod
+    def computeAccelerations(self, positions, masses):
+        pass
+
+    def _computePairwiseDistance(self, posI, posJ):
+        dx = posJ - posI
+        distSq = cp.sum(dx * dx, axis=-1) + self.softening ** 2
+        return dx, cp.sqrt(distSq)
+
+
+class NewtonCalculator(Calculator):
+    def __init__(self, gravitationalConstant=1.0, is3D=True):
+        super().__init__(gravitationalConstant=gravitationalConstant, is3D=is3D)
+
+    def computeAccelerations(self, positions, masses):
+        n = len(positions)
+        dim = positions.shape[1]
+        accelerations = cp.zeros((n, dim), dtype=cp.float64)
+        for i in range(n):
+            dx = positions[i + 1:] - positions[i]
+            distSq = cp.sum(dx ** 2, axis=1) + self.softening ** 2
+            dist = cp.sqrt(distSq)
+            forceMag = masses[i + 1:] / distSq
+            accelerations[i] += cp.sum(forceMag[:, None] * dx / dist[:, None], axis=0)
+            accelerations[i + 1:] -= (forceMag[:, None] * dx / dist[:, None]) * (masses[i] / masses[i + 1:])[:, None]
+        return accelerations * self.gravitationalConstant
 
 
 class Node:
