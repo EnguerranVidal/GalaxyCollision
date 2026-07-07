@@ -1,15 +1,12 @@
-# **GALAXY MERGER** 
-[![wakatime](https://wakatime.com/badge/user/d1fb42e6-38e1-489b-a7b0-fa05747ea94a/project/8c51de75-1e37-42a8-97d2-34a05484047a.svg)](https://wakatime.com/badge/user/d1fb42e6-38e1-489b-a7b0-fa05747ea94a/project/8c51de75-1e37-42a8-97d2-34a05484047a)  
-
-<p align="center">
-  <img src="https://github.com/EnguerranVidal/Galaxy-Collision/blob/main/docs/showcase_gifs/Galaxy_Collision.gif" width="600" height="600">
-</p>
+# **GALAXY MERGER**
 
 
 This Python program's goal is to simulate the collision of multiple 
 galaxies in a 2D plane and create a GIF animation of their interaction.
 For this simulation, we will use a modified N-Body Engine we used for the 
 **[Planetary-Orbits-Solar-System](https://github.com/EnguerranVidal/Planetary-Orbits-Solar-System)** Python project back in 2020.
+
+<div style="text-align: justify"> Some icons by <a href="https://icons8.com/">Icons8</a>. </div>
 
 
 ### The Galaxies :
