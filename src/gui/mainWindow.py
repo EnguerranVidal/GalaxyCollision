@@ -3,10 +3,11 @@ import json
 import time
 from typing import Optional
 
-from PyQt5.QtCore import QUrl, QTimer
+from PyQt5.QtCore import QUrl, QTimer, Qt
 from PyQt5.QtGui import QIcon, QDesktopServices
 from PyQt5.QtWidgets import *
 
+from src.gui.configEditor import SimulationConfigDock
 from src.gui.visualizers.view3d import Universe3dViewWidget
 from src.gui.settings import UiSettings, WindowGeometry
 
@@ -23,6 +24,8 @@ class MainWindow(QMainWindow):
         self.loadSettings()
 
         # SETTING UP USER INTERFACE
+        self.simulationParameters = SimulationConfigDock()
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.simulationParameters)
         self.stackedSimulationWidget = QStackedWidget()
         self.simulation3dWidget = Universe3dViewWidget()
         self.stackedSimulationWidget.addWidget(self.simulation3dWidget)
