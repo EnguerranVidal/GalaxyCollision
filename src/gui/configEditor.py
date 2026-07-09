@@ -4,13 +4,14 @@ from PyQt5.QtWidgets import *
 from src.core.engine.parameters import SimulatorParameters, BasicDistributionParameters, GalaxyDistributionParameters
 
 
-class SimulationConfigDock(QDockWidget):
+class SimulationConfigEditorDock(QDockWidget):
     launchSimulation = pyqtSignal(SimulatorParameters)
 
     def __init__(self, initialParameters: SimulatorParameters = None, parent=None):
         super().__init__("Simulation Configuration", parent)
         self.activeParameters = initialParameters or SimulatorParameters()
         self.uiParameters = self.activeParameters
+        self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
         self.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
         self.setFeatures(QDockWidget.DockWidgetMovable | QDockWidget.DockWidgetClosable)
         self.setFloating(False)
@@ -67,47 +68,105 @@ class SimulationConfigDock(QDockWidget):
         simulationLayout.addWidget(simulationRuntimeGroup)
 
         # DISTRIBUTION PARAMETERS
-        self.distributionTab = QStackedWidget()
+        self.distributionEditor = QStackedWidget()
         self.basicWidget = BasicDistributionWidget()
         self.galaxyWidget = GalaxyDistributionWidget()
         self.basicWidget.changed.connect(self._onUIChanged)
         self.galaxyWidget.changed.connect(self._onUIChanged)
-        self.distributionTab.addWidget(self.basicWidget)
-        self.distributionTab.addWidget(self.galaxyWidget)
+        self.distributionEditor.addWidget(self.basicWidget)
+        self.distributionEditor.addWidget(self.galaxyWidget)
 
         # MAIN LAYOUT & CONTAINER
         self.container = QWidget()
-        self.editorTabs = QTabWidget()
-        self.editorTabs.addTab(self.simulationTab, "Simulation")
-        self.editorTabs.addTab(self.distributionTab, "Distribution")
-        self.reinitializationButton = QPushButton("Reinitialize Simulation")
-        self.reinitializationButton.clicked.connect(self._reinitialize)
+        self.launchButton = QPushButton("Launch Simulation")
+        self.launchButton.clicked.connect(self._launchSimulation)
         mainLayout = QVBoxLayout(self.container)
-        mainLayout.addWidget(self.editorTabs)
-        mainLayout.addWidget(self.reinitializationButton)
+        mainLayout.addWidget(self.simulationTab)
+        mainLayout.addWidget(self.distributionEditor)
+        mainLayout.addStretch()
+        mainLayout.addWidget(self.launchButton)
         self.setWidget(self.container)
+        self._initializeUi()
+        self._updateButtonStates()
+
+    def _initializeUi(self):
+        p = self.activeParameters
+        self.nameEdit.blockSignals(True)
+        self.distributionTypeCombo.blockSignals(True)
+        self.calculatorTypeCombo.blockSignals(True)
+        self.integratorTypeCombo.blockSignals(True)
+        self.gravitationalConstantSpin.blockSignals(True)
+        self.timeStepSpin.blockSignals(True)
+        self.thetaValueSpin.blockSignals(True)
+        self.endlessCheck.blockSignals(True)
+        self.maxTimeSpin.blockSignals(True)
+        self.saveResultsCheck.blockSignals(True)
+        try:
+            self.nameEdit.setText(p.name)
+            self.distributionTypeCombo.setCurrentText(p.distributionType.title())
+            self.calculatorTypeCombo.setCurrentText(p.calculatorType.replace("_", "-"))
+            self.integratorTypeCombo.setCurrentText(p.integratorType)
+            self.gravitationalConstantSpin.setValue(p.gravitationalConstant)
+            self.timeStepSpin.setValue(p.timeStep)
+            self.thetaValueSpin.setValue(p.theta)
+            self.endlessCheck.setChecked(p.endless)
+            self.maxTimeSpin.setValue(p.maxTime)
+            self.saveResultsCheck.setChecked(p.saveResults)
+            idx = 0 if p.distributionType.upper() == "BASIC" else 1
+            self.distributionEditor.setCurrentIndex(idx)
+            self.galaxyWidget.syncUIFromParameters(p.galaxyDistributionParameters)
+            self.basicWidget.syncUIFromParameters(p.basicDistributionParameters)
+            self.uiParameters = p
+        finally:
+            # Re-enable signals
+            self.nameEdit.blockSignals(False)
+            self.distributionTypeCombo.blockSignals(False)
+            self.calculatorTypeCombo.blockSignals(False)
+            self.integratorTypeCombo.blockSignals(False)
+            self.gravitationalConstantSpin.blockSignals(False)
+            self.timeStepSpin.blockSignals(False)
+            self.thetaValueSpin.blockSignals(False)
+            self.endlessCheck.blockSignals(False)
+            self.maxTimeSpin.blockSignals(False)
+            self.saveResultsCheck.blockSignals(False)
 
     def _onUIChanged(self):
+        self.uiParameters.name = self.nameEdit.text()
+        self.uiParameters.distributionType = self.distributionTypeCombo.currentText().upper()
+        self.uiParameters.calculatorType = self.calculatorTypeCombo.currentText().replace("-", "_").upper()
+        self.uiParameters.integratorType = self.integratorTypeCombo.currentText()
+        self.uiParameters.gravitationalConstant = self.gravitationalConstantSpin.value()
+        self.uiParameters.timeStep = self.timeStepSpin.value()
+        self.uiParameters.theta = self.thetaValueSpin.value()
+        self.uiParameters.endless = self.endlessCheck.isChecked()
+        self.uiParameters.maxTime = self.maxTimeSpin.value()
+        self.uiParameters.saveResults = self.saveResultsCheck.isChecked()
+        if self.uiParameters.distributionType == "GALAXY":
+            self.uiParameters.galaxyDistributionParameters = self.galaxyWidget.getParameters()
+        else:
+            self.uiParameters.basicDistributionParameters = self.basicWidget.getParameters()
         self._updateButtonStates()
 
     def _updateButtonStates(self):
         hasChanges = self.uiParameters != self.activeParameters
-        self.reinitializationButton.setEnabled(hasChanges)
+        self.launchButton.setEnabled(hasChanges)
 
-    def _reinitialize(self):
+    def _launchSimulation(self):
         self._onParamChanged()
-        self.launchSimulation.emit(self.parameters)
+        self.activeParameters = self.uiParameters
+        self.launchSimulation.emit(self.activeParameters)
+        self._updateButtonStates()
 
     def _onDistributionTypeChanged(self, text):
         idx = 0 if text == "Basic" else 1
-        self.distributionTab.setCurrentIndex(idx)
-        self._onParamChanged()
+        self.distributionEditor.setCurrentIndex(idx)
+        self._onUIChanged()
 
-    def _onParamChanged(self):
-        pass
+    def getUiParameters(self):
+        return self.uiParameters
 
-    def getParameters(self) -> SimulatorParameters:
-        return self.parameters
+    def getParameters(self):
+        return self.activeParameters
 
 
 class BasicDistributionWidget(QWidget):
@@ -142,12 +201,29 @@ class BasicDistributionWidget(QWidget):
         mainLayout = QVBoxLayout(self)
         mainLayout.addWidget(group)
 
-    def getParams(self):
+    def getParameters(self):
         self.parameters.numParticles = self.numParticles.value()
         self.parameters.positionScale = self.positionScale.value()
         self.parameters.velocityScale = self.velocityScale.value()
         self.parameters.is3D = self.is3D.isChecked()
         return self.parameters
+
+    def syncUIFromParameters(self, parameters: BasicDistributionParameters):
+        self.numParticles.blockSignals(True)
+        self.positionScale.blockSignals(True)
+        self.velocityScale.blockSignals(True)
+        self.is3D.blockSignals(True)
+        try:
+            self.numParticles.setValue(parameters.numParticles)
+            self.positionScale.setValue(parameters.positionScale)
+            self.velocityScale.setValue(parameters.velocityScale)
+            self.is3D.setChecked(parameters.is3D)
+            self.parameters = parameters
+        finally:
+            self.numParticles.blockSignals(False)
+            self.positionScale.blockSignals(False)
+            self.velocityScale.blockSignals(False)
+            self.is3D.blockSignals(False)
 
 
 
@@ -188,10 +264,30 @@ class GalaxyDistributionWidget(QWidget):
         mainLayout = QVBoxLayout(self)
         mainLayout.addWidget(group)
 
-    def getParams(self):
+    def getParameters(self):
         self.parameters.numParticles = self.numParticles.value()
         self.parameters.totalMass = self.totalMass.value()
         self.parameters.radius = self.radius.value()
         self.parameters.height = self.height.value()
         self.parameters.is3D = self.is3D.isChecked()
         return self.parameters
+
+    def syncUIFromParameters(self, parameters: GalaxyDistributionParameters):
+        self.numParticles.blockSignals(True)
+        self.totalMass.blockSignals(True)
+        self.radius.blockSignals(True)
+        self.height.blockSignals(True)
+        self.is3D.blockSignals(True)
+        try:
+            self.numParticles.setValue(parameters.numParticles)
+            self.totalMass.setValue(parameters.totalMass)
+            self.radius.setValue(parameters.radius)
+            self.height.setValue(parameters.height)
+            self.is3D.setChecked(parameters.is3D)
+            self.parameters = parameters
+        finally:
+            self.numParticles.blockSignals(False)
+            self.totalMass.blockSignals(False)
+            self.radius.blockSignals(False)
+            self.height.blockSignals(False)
+            self.is3D.blockSignals(False)

@@ -63,14 +63,8 @@ class SimulatorParameters:
     endless: bool = True
     maxTime: float = 1000.0
     saveResults: bool = False
-    basicDistributionParameters: Optional[BasicDistributionParameters] = None
-    galaxyDistributionParameters: Optional[GalaxyDistributionParameters] = None
-
-    def __post_init__(self):
-        if self.distributionType.lower() == "basic" and self.basicDistributionParameters is None:
-            self.basicDistributionParameters = BasicDistributionParameters(is3D=self.is3D)
-        elif self.distributionType.lower() == "galaxy" and self.galaxyDistributionParameters is None:
-            self.galaxyDistributionParameters = GalaxyDistributionParameters(is3D=self.is3D)
+    basicDistributionParameters: Optional[BasicDistributionParameters] = BasicDistributionParameters(is3D)
+    galaxyDistributionParameters: Optional[GalaxyDistributionParameters] = GalaxyDistributionParameters(is3D)
 
     def __eq__(self, other):
         if not isinstance(other, SimulatorParameters):
