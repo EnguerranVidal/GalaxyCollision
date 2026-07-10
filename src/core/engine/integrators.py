@@ -1,6 +1,3 @@
-import cupy as cp
-
-
 class Integrator:
     def __init__(self, timeStep: float):
         self.timeStep = timeStep

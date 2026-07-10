@@ -1,21 +1,18 @@
-import cupy as cp
+import numpy as np
 from abc import ABC, abstractmethod
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 class Calculator(ABC):
-    def __init__(self, gravitationalConstant: float = 1.0, is3D: bool = True):
+    def __init__(self, gravitationalConstant: float = 1.0, is3D: bool = True, nbThreads=4):
         self.gravitationalConstant = gravitationalConstant
         self.is3D = is3D
         self.softening = 1e-3
+        self.nbThreads = nbThreads
 
     @abstractmethod
     def computeAccelerations(self, positions, masses):
         pass
-
-    def _computePairwiseDistance(self, posI, posJ):
-        dx = posJ - posI
-        distSq = cp.sum(dx * dx, axis=-1) + self.softening ** 2
-        return dx, cp.sqrt(distSq)
 
 
 class NewtonCalculator(Calculator):
@@ -24,16 +21,26 @@ class NewtonCalculator(Calculator):
 
     def computeAccelerations(self, positions, masses):
         n = len(positions)
-        dimension = positions.shape[1]
-        accelerations = cp.zeros((n, dimension), dtype=cp.float64)
-        for i in range(n):
+        dim = positions.shape[1]
+        accelerations = np.zeros((n, dim), dtype=np.float64)
+
+        def computeAccelerationSingle(i):
             xDistance = positions[i + 1:] - positions[i]
-            distSquared = cp.sum(xDistance ** 2, axis=1) + self.softening ** 2
-            distance = cp.sqrt(distSquared)
+            distSquared = np.sum(xDistance ** 2, axis=1) + self.softening ** 2
+            distance = np.sqrt(distSquared)
             forceMagnitude = masses[i + 1:] / distSquared
-            accelerations[i] += cp.sum(forceMagnitude[:, None] * xDistance / distance[:, None], axis=0)
-            accelerations[i + 1:] -= (forceMagnitude[:, None] * xDistance / distance[:, None]) * (masses[i] / masses[i + 1:])[:, None]
-        return accelerations * self.gravitationalConstant
+            force = forceMagnitude[:, None] * (xDistance / distance[:, None])
+            singleAcceleration = np.sum(force, axis=0)
+            singleAccelerationOthers = - (force * (self.gravitationalConstant * masses[i] / masses[i + 1:])[:, None])
+            return i, singleAcceleration, singleAccelerationOthers
+
+        with ThreadPoolExecutor(max_workers=self.nbThreads) as executor:
+            futures = [executor.submit(computeAccelerationSingle, i) for i in range(n)]
+            for future in as_completed(futures):
+                i, acceleration, accelerationOthers = future.result()
+                accelerations[i] += acceleration * self.gravitationalConstant
+                accelerations[i + 1:] += accelerationOthers
+        return accelerations
 
 
 class Node:
@@ -42,7 +49,7 @@ class Node:
         self.size = size
         self.is3D = is3D
         self.mass = 0.0
-        self.massCenter = cp.zeros(3 if is3D else 2, dtype=cp.float64)
+        self.massCenter = np.zeros(3 if is3D else 2, dtype=np.float64)
         self.particles = []
         self.children = []
         self.isLeaf = True
@@ -58,10 +65,10 @@ class BarnesHutCalculator(Calculator):
         n = len(positions)
         if n == 0:
             return
-        minPosition = cp.min(positions, axis=0)
-        maxPosition = cp.max(positions, axis=0)
+        minPosition = np.min(positions, axis=0)
+        maxPosition = np.max(positions, axis=0)
         center = (minPosition + maxPosition) / 2.0
-        size = cp.max(maxPosition - minPosition) * 1.1
+        size = np.max(maxPosition - minPosition) * 1.1
         self.root = Node(center, size, self.is3D)
         for i in range(n):
             self._insert(self.root, positions[i], masses[i], i)
@@ -89,7 +96,7 @@ class BarnesHutCalculator(Calculator):
 
     def _subdivide(self, node):
         half = node.size / 2.0
-        offsets = cp.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0], [0, 0, 1], [1, 0, 1], [0, 1, 1], [1, 1, 1]])[: (8 if self.is3D else 4)]
+        offsets = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0], [0, 0, 1], [1, 0, 1], [0, 1, 1], [1, 1, 1]])[: (8 if self.is3D else 4)]
         for offset in offsets:
             childCenter = node.center + (offset - 0.5) * half
             child = Node(childCenter, half, self.is3D)
@@ -105,24 +112,31 @@ class BarnesHutCalculator(Calculator):
     def computeAccelerations(self, positions, masses):
         self.buildTree(positions, masses)
         n = len(positions)
-        accelerations = cp.zeros_like(positions)
-        for i in range(n):
-            accelerations[i] = self._calculateForce(self.root, positions[i], i)
+        accelerations = np.zeros_like(positions)
+
+        def calculateForceSingle(i):
+            return i, self._calculateForce(self.root, positions[i], i)
+
+        with ThreadPoolExecutor(max_workers=self.nbThreads) as executor:
+            futures = [executor.submit(calculateForceSingle, i) for i in range(n)]
+            for future in as_completed(futures):
+                i, force = future.result()
+                accelerations[i] = force
         return accelerations * self.gravitationalConstant
 
     def _calculateForce(self, node, pos, particleIndex):
         if node.mass == 0:
-            return cp.zeros_like(pos)
+            return np.zeros_like(pos)
         xDistance = node.massCenter - pos
-        distanceSquared = cp.dot(xDistance, xDistance) + self.softening ** 2
-        distance = cp.sqrt(distanceSquared)
+        distanceSquared = np.dot(xDistance, xDistance) + self.softening ** 2
+        distance = np.sqrt(distanceSquared)
         if node.isLeaf or (node.size / distance < self.theta):
             if len(node.particles) == 1 and node.particles[0] == particleIndex:
-                return cp.zeros_like(pos)
+                return np.zeros_like(pos)
             forceMagnitude = node.mass / distanceSquared
             return forceMagnitude * xDistance / distance
         else:
-            totalForce = cp.zeros_like(pos)
+            totalForce = np.zeros_like(pos)
             for child in node.children:
                 totalForce += self._calculateForce(child, pos, particleIndex)
             return totalForce

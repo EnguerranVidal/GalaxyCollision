@@ -1,69 +1,93 @@
-import cupy as cp
+import numpy as np
+from PyQt5.QtCore import QThread, pyqtSignal
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 from src.core.engine.integrators import EulerExplicit, RK4
 from src.core.engine.calculators import BarnesHutCalculator, NewtonCalculator
 from src.core.engine.initializers import Initializer
 from src.core.engine.parameters import SimulatorParameters
 
 
-class NBodySimulator:
-    def __init__(self, params: SimulatorParameters):
-        self.params = params
-        self.timeStep = params.timeStep
-        self.gravitationalConstant = params.gravitationalConstant
+class NBodySimulator(QThread):
+    positionsUpdated = pyqtSignal(dict)
+    simulationFinished = pyqtSignal()
+
+    def __init__(self, parameters: SimulatorParameters):
+        QThread.__init__(self)
+        self.parameters = parameters
+        self.timeStep = parameters.timeStep
+        self.gravitationalConstant = parameters.gravitationalConstant
         self.is3D = self._getIs3D()
         self.initializer = Initializer(gravitationalConstant=self.gravitationalConstant)
-        self.calculator = self._createCalculator(params)
-        self.integrator = self._createIntegrator(params)
-        self.positions, self.velocities = None, None
-        self.masses = None
+        self.calculator = self._createCalculator(parameters)
+        self.integrator = self._createIntegrator(parameters)
+        self.positions = self.velocities = self.masses = None
         self.time = 0.0
+        self.isRunning = False
+        self._stopRequested = False
 
     def _getIs3D(self):
-        if self.params.distributionType.lower() == "basic":
-            return self.params.basicDistributionParameters.is3D
+        if self.parameters.distributionType.lower() == "basic":
+            return self.parameters.basicDistributionParameters.is3D
         else:
-            return self.params.galaxyDistributionParameters.is3D
+            return self.parameters.galaxyDistributionParameters.is3D
 
     @staticmethod
-    def _createIntegrator(params: SimulatorParameters):
-        integratorType = params.integratorType.upper()
+    def _createIntegrator(parameters: SimulatorParameters):
+        integratorType = parameters.integratorType.upper()
         if integratorType == "EULER_EXPLICIT":
-            return EulerExplicit(params.timeStep)
+            return EulerExplicit(parameters.timeStep)
         else:
-            return RK4(params.timeStep)
+            return RK4(parameters.timeStep)
 
     @staticmethod
-    def _createCalculator(params: SimulatorParameters):
-        calculatorType = params.calculatorType.upper()
+    def _createCalculator(parameters: SimulatorParameters):
+        calculatorType = parameters.calculatorType.upper()
         if calculatorType == "BARNES_HUT":
-            return BarnesHutCalculator(theta=params.theta, gravitationalConstant=params.gravitationalConstant, is3D=params.is3D)
+            return BarnesHutCalculator(theta=parameters.theta, gravitationalConstant=parameters.gravitationalConstant, is3D=parameters.is3D)
         else:
-            return NewtonCalculator(gravitationalConstant=params.gravitationalConstant, is3D=params.is3D)
+            return NewtonCalculator(gravitationalConstant=parameters.gravitationalConstant, is3D=parameters.is3D)
 
     def initialize(self):
-        distributionType = self.params.distributionType.lower()
+        distributionType = self.parameters.distributionType.lower()
         if distributionType == "basic":
-            p = self.params.basicDistributionParameters
+            p = self.parameters.basicDistributionParameters
             self.positions, self.velocities, self.masses = self.initializer.basicDistribution(numParticles=p.numParticles, positionScale=p.positionScale, velocityScale=p.velocityScale, is3D=p.is3D)
         elif distributionType == "galaxy":
-            p = self.params.galaxyDistributionParameters
+            p = self.parameters.galaxyDistributionParameters
             self.positions, self.velocities, self.masses = self.initializer.galaxyDistribution(numParticles=p.numParticles, totalMass=p.totalMass, radius=p.radius, height=p.height, is3D=p.is3D)
         else:
             raise ValueError("Unsupported distributionType")
-        print(f"Initialized {distributionType} simulation with {self.params.numParticles if hasattr(self.params, 'numParticles') else 'N'} particles.")
+        print(f"Initialized {distributionType} simulation with {self.parameters.numParticles if hasattr(self.parameters, 'numParticles') else 'N'} particles.")
+
+    def run(self):
+        print('NBodySimulator thread started')
+        self.isRunning = True
+        self._stopRequested = False
+        try:
+            self.initialize()
+            stepCount = 0
+            while self.isRunning and not self._stopRequested:
+                print(stepCount)
+                self.positions, self.velocities = self.integrator.step(self.positions, self.velocities, self.masses, self.calculator)
+                self.time += self.timeStep
+                groups = {"main": self.positions.copy()}
+                self.positionsUpdated.emit(groups)
+                stepCount += 1
+        except Exception as e:
+            print("Simulation error:", e)
+        finally:
+            self.isRunning = False
+            self.simulationFinished.emit()
+
+    def stop(self):
+        self._stopRequested = True
+        self.isRunning = False
 
     def step(self):
         if self.positions is None:
-            raise ValueError("Particles not initialized. Call initializeBasic() or initializeGalaxy() first.")
-        self.positions, self.velocities = self.integrator.step(self.positions, self.velocities, self.masses, self.calculator)
+            self.initialize()
+        self.positions, self.velocities = self.integrator.step(
+            self.positions, self.velocities, self.masses, self.calculator)
         self.time += self.timeStep
         return self.positions, self.velocities
-
-    def runSimulation(self, numSteps: int = 1000, printEvery: int = 100):
-        print("Simulation started!")
-        for step in range(numSteps):
-            self.step()
-            if (step + 1) % printEvery == 0:
-                print(f"Step {step + 1}/{numSteps} | Time: {self.time:.4f}")
-        print("Simulation completed!")
-        return self.positions, self.velocities, self.time

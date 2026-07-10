@@ -5,7 +5,8 @@ from src.core.engine.parameters import SimulatorParameters, BasicDistributionPar
 
 
 class SimulationConfigEditorDock(QDockWidget):
-    launchSimulation = pyqtSignal(SimulatorParameters)
+    launchSimulationPressed = pyqtSignal(object)
+    resetSimulationPressed = pyqtSignal(object)
 
     def __init__(self, initialParameters: SimulatorParameters = None, parent=None):
         super().__init__("Simulation Configuration", parent)
@@ -80,12 +81,19 @@ class SimulationConfigEditorDock(QDockWidget):
         self.container = QWidget()
         self.launchButton = QPushButton("Launch Simulation")
         self.launchButton.clicked.connect(self._launchSimulation)
+        self.resetButton = QPushButton("Reset Simulation")
+        self.resetButton.clicked.connect(self._resetSimulation)
+        self.resetButton.setEnabled(False)
+        buttonsLayout = QHBoxLayout()
+        buttonsLayout.addWidget(self.launchButton)
+        buttonsLayout.addWidget(self.resetButton)
         mainLayout = QVBoxLayout(self.container)
         mainLayout.addWidget(self.simulationTab)
         mainLayout.addWidget(self.distributionEditor)
         mainLayout.addStretch()
-        mainLayout.addWidget(self.launchButton)
+        mainLayout.addLayout(buttonsLayout)
         self.setWidget(self.container)
+        self.hasRunBefore = False
         self._initializeUi()
         self._updateButtonStates()
 
@@ -148,14 +156,20 @@ class SimulationConfigEditorDock(QDockWidget):
         self._updateButtonStates()
 
     def _updateButtonStates(self):
-        hasChanges = self.uiParameters != self.activeParameters
-        self.launchButton.setEnabled(hasChanges)
+        hasChanges = self.getUiParameters() != self.activeParameters
+        self.launchButton.setEnabled(hasChanges or not self.hasRunBefore)
+        self.resetButton.setEnabled(self.hasRunBefore)
 
     def _launchSimulation(self):
-        self._onParamChanged()
+        self._onUIChanged()
         self.activeParameters = self.uiParameters
-        self.launchSimulation.emit(self.activeParameters)
+        self.hasRunBefore = True
+        self.launchSimulationPressed.emit(self.activeParameters)
         self._updateButtonStates()
+
+    def _resetSimulation(self):
+        if self.hasRunBefore:
+            self.resetSimulationPressed.emit(self.activeParameters)
 
     def _onDistributionTypeChanged(self, text):
         idx = 0 if text == "Basic" else 1
@@ -167,6 +181,10 @@ class SimulationConfigEditorDock(QDockWidget):
 
     def getParameters(self):
         return self.activeParameters
+
+    def notifySimulationStarted(self):
+        self.hasRunBefore = True
+        self._updateButtonStates()
 
 
 class BasicDistributionWidget(QWidget):

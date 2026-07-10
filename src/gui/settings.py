@@ -1,6 +1,8 @@
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
+from core.engine.parameters import SimulatorParameters
+
 
 @dataclass
 class WindowGeometry:
@@ -35,6 +37,7 @@ class WindowSettings:
 @dataclass
 class UiSettings:
     window: WindowSettings = field(default_factory=WindowSettings)
+    parameters: SimulatorParameters = field(default_factory=SimulatorParameters)
 
     @classmethod
     def fromDict(cls, data: dict | None):

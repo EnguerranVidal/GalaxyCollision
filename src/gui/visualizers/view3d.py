@@ -4,7 +4,6 @@ from OpenGL.GLUT import *
 from OpenGL.GL import *
 from OpenGL.GL.shaders import compileProgram, compileShader
 
-import cupy as cp
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import *
 
@@ -34,13 +33,13 @@ class Camera:
         self.zoom = max(self.minimumZoom, min(self.maximumZoom, self.zoom))
 
     def getPosition(self):
-        rotationX = cp.deg2rad(self.rotationX)
-        rotationY = cp.deg2rad(self.rotationY)
-        rotationFix = cp.deg2rad(-90)
-        camera = cp.array([0, 0, self.zoom], dtype=float)
-        xRotation = cp.array([[1, 0, 0], [0, cp.cos(-rotationX), -cp.sin(-rotationX)], [0, cp.sin(-rotationX), cp.cos(-rotationX)]])
-        yRotation = cp.array([[cp.cos(-rotationY), 0, cp.sin(-rotationY)], [0, 1, 0], [-cp.sin(-rotationY), 0, cp.cos(-rotationY)]])
-        fixRotation = cp.array([[1, 0, 0], [0, cp.cos(-rotationFix), -cp.sin(-rotationFix)], [0, cp.sin(-rotationFix), cp.cos(-rotationFix)]])
+        rotationX = np.deg2rad(self.rotationX)
+        rotationY = np.deg2rad(self.rotationY)
+        rotationFix = np.deg2rad(-90)
+        camera = np.array([0, 0, self.zoom], dtype=float)
+        xRotation = np.array([[1, 0, 0], [0, np.cos(-rotationX), -np.sin(-rotationX)], [0, np.sin(-rotationX), np.cos(-rotationX)]])
+        yRotation = np.array([[np.cos(-rotationY), 0, np.sin(-rotationY)], [0, 1, 0], [-np.sin(-rotationY), 0, np.cos(-rotationY)]])
+        fixRotation = np.array([[1, 0, 0], [0, np.cos(-rotationFix), -np.sin(-rotationFix)], [0, np.sin(-rotationFix), np.cos(-rotationFix)]])
         return fixRotation @ (yRotation @ (xRotation @ camera))
 
 
@@ -91,10 +90,10 @@ class ObjectGroupRenderer:
         glBindBuffer(GL_ARRAY_BUFFER, 0)
         glBindVertexArray(0)
 
-    def updateGroupPositions(self, groupIndex: str, positions: cp.ndarray):
+    def updateGroupPositions(self, groupIndex: str, positions: np.ndarray):
         if groupIndex not in self.vbos:
             self.createGroup(groupIndex)
-        positions = cp.asarray(positions, dtype=cp.float32)
+        positions = np.asarray(positions, dtype=np.float32)
         if positions.ndim != 2 or positions.shape[1] != 3:
             raise ValueError("Positions must be Nx3 array")
         glBindBuffer(GL_ARRAY_BUFFER, self.vbos[groupIndex])
@@ -148,6 +147,131 @@ class ObjectGroupRenderer:
             glDeleteProgram(self.shader)
 
 
+class GridRenderer:
+    def __init__(self):
+        self.minimumExtent = 1.0
+        self.maximumExtent = 1000.0
+        self.linesPerHalfAxis = 10
+
+    def initialize(self):
+        pass
+
+    def render(self, cameraZoom):
+        extent = self._niceGridExtent(cameraZoom * 2.5)
+        extent = max(self.minimumExtent, min(self.maximumExtent, extent))
+        step = self._gridStep(extent)
+        glPushMatrix()
+        try:
+            glUseProgram(0)
+            glDisable(GL_TEXTURE_2D)
+            glDisable(GL_LIGHTING)
+            glEnable(GL_BLEND)
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+            glLineWidth(1.0)
+            glBegin(GL_LINES)
+            value = -extent
+            while value <= extent + 1e-9:
+                isAxis = abs(value) < 1e-9
+                isMajor = self._isMajorGridLine(value, step)
+                if isAxis:
+                    glColor4f(0.85, 0.85, 0.85, 0.55)
+                elif isMajor:
+                    glColor4f(0.55, 0.65, 0.75, 0.22)
+                else:
+                    glColor4f(0.45, 0.50, 0.55, 0.10)
+                glVertex3f(-extent, value, 0.0)
+                glVertex3f(extent, value, 0.0)
+                glVertex3f(value, -extent, 0.0)
+                glVertex3f(value, extent, 0.0)
+                value += step
+            glEnd()
+            self._drawLabels(extent, step)
+        finally:
+            glDisable(GL_BLEND)
+            glDepthMask(GL_TRUE)
+            glEnable(GL_DEPTH_TEST)
+            glColor4f(1.0, 1.0, 1.0, 1.0)
+            glPopMatrix()
+
+
+    @staticmethod
+    def _niceGridExtent(value):
+        if value <= 1.0:
+            return 1.0
+        exponent = np.floor(np.log10(value))
+        base = 10 ** exponent
+        scaled = value / base
+        if scaled <= 2.5:
+            return base
+        if scaled <= 7.5:
+            return 5.0 * base
+        return 10 * base
+
+    def _gridStep(self, extent):
+        return extent / self.linesPerHalfAxis
+
+    @staticmethod
+    def _isMajorGridLine(value, step):
+        if abs(value) < 1e-9:
+            return True
+        majorStep = step * 5.0
+        ratio = value / majorStep
+        return abs(ratio - round(ratio)) < 1e-6
+
+    def _drawLabels(self, extent, step):
+        viewModel = (GLdouble * 16)()
+        viewProjection = (GLdouble * 16)()
+        viewport = (GLint * 4)()
+        glGetDoublev(GL_MODELVIEW_MATRIX, viewModel)
+        glGetDoublev(GL_PROJECTION_MATRIX, viewProjection)
+        glGetIntegerv(GL_VIEWPORT, viewport)
+        labelStep = step * 5.0
+        value = -extent
+        while value <= extent + 1e-9:
+            if abs(value) > 1e-9 and self._isMajorGridLine(value, step):
+                xLabelPosition, yLabelPosition = np.array([value, 0.0, 0.0], dtype=float), np.array([0.0, value, 0.0], dtype=float)
+                xAlpha, yAlpha = 1.0, 1.0
+                self._drawWorldLabel(xLabelPosition[0], xLabelPosition[1], xLabelPosition[2], self._formatGridLabel(value), viewModel, viewProjection, viewport, alpha=xAlpha, baseAlpha=0.75)
+                self._drawWorldLabel(yLabelPosition[0], yLabelPosition[1], yLabelPosition[2], self._formatGridLabel(value), viewModel, viewProjection, viewport, alpha=yAlpha, baseAlpha=0.75)
+            value += labelStep
+
+    @staticmethod
+    def _formatGridLabel(value):
+        if abs(value) >= 10.0:
+            return f"{value:.0f}"
+        return f"{value:.1f}"
+
+    @staticmethod
+    def _drawWorldLabel(x, y, z, text, viewModel, viewProjection, viewport, alpha=1.0, color=(0.75, 0.80, 0.85),
+                        baseAlpha=1.0):
+        xWindow, yWindow, zWindow = gluProject(x, y, z, viewModel, viewProjection, viewport)
+        if zWindow <= 0.0 or zWindow >= 1.0:
+            return
+        glMatrixMode(GL_PROJECTION)
+        glPushMatrix()
+        glLoadIdentity()
+        glOrtho(0, viewport[2], 0, viewport[3], -1, 1)
+        glMatrixMode(GL_MODELVIEW)
+        glPushMatrix()
+        glLoadIdentity()
+        try:
+            glUseProgram(0)
+            glDisable(GL_TEXTURE_2D)
+            glDisable(GL_LIGHTING)
+            glEnable(GL_BLEND)
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+            glColor4f(color[0], color[1], color[2], baseAlpha * alpha)
+            glRasterPos2f(xWindow + 4, yWindow + 4)
+            for char in text:
+                glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, ord(char))
+        finally:
+            glMatrixMode(GL_MODELVIEW)
+            glPopMatrix()
+            glMatrixMode(GL_PROJECTION)
+            glPopMatrix()
+            glMatrixMode(GL_MODELVIEW)
+
+
 class Universe3dViewWidget(QOpenGLWidget):
     cameraChanged = pyqtSignal()
 
@@ -158,6 +282,7 @@ class Universe3dViewWidget(QOpenGLWidget):
         self.camera = Camera()
         self.objectSpotData, self.pendingObjectBufferUpdates = {}, {}
         self.objectsRenderer = ObjectGroupRenderer()
+        self.gridRenderer = GridRenderer()
         self.pendingObjectBufferUpdates = {}
         self.groupColors = {}
         self.lastPosX, self.lastPosY = 0, 0
@@ -187,6 +312,7 @@ class Universe3dViewWidget(QOpenGLWidget):
         self.camera.apply()
         glDisable(GL_LIGHTING)
         self.objectsRenderer.renderAll(pointSize=4.0)
+        self.gridRenderer.render(self.camera.zoom)
 
     def updateData(self, positions: dict):
         self.pendingObjectBufferUpdates.clear()
