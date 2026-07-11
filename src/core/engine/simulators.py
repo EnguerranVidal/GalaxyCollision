@@ -1,5 +1,5 @@
 import numpy as np
-from PyQt5.QtCore import QThread, pyqtSignal
+from PyQt5.QtCore import QThread, pyqtSignal, QObject
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from src.core.engine.integrators import EulerExplicit, RK4
@@ -8,12 +8,12 @@ from src.core.engine.initializers import Initializer
 from src.core.engine.parameters import SimulatorParameters
 
 
-class NBodySimulator(QThread):
-    positionsUpdated = pyqtSignal(dict)
+class NBodySimulator(QObject):
+    positionsReady = pyqtSignal(dict)
     simulationFinished = pyqtSignal()
 
     def __init__(self, parameters: SimulatorParameters):
-        QThread.__init__(self)
+        super().__init__()
         self.parameters = parameters
         self.timeStep = parameters.timeStep
         self.gravitationalConstant = parameters.gravitationalConstant
@@ -25,6 +25,16 @@ class NBodySimulator(QThread):
         self.time = 0.0
         self.isRunning = False
         self._stopRequested = False
+
+    def setParameters(self, parameters: SimulatorParameters):
+        self.parameters = parameters
+        self.gravitationalConstant = parameters.gravitationalConstant
+        self.timeStep = parameters.timeStep
+        self.is3D = self._getIs3D()
+        self.initializer = Initializer(gravitationalConstant=self.gravitationalConstant)
+        self.calculator = self._createCalculator(parameters)
+        self.integrator = self._createIntegrator(parameters)
+        self.positions = self.velocities = self.masses = None
 
     def _getIs3D(self):
         if self.parameters.distributionType.lower() == "basic":
@@ -72,7 +82,7 @@ class NBodySimulator(QThread):
                 self.positions, self.velocities = self.integrator.step(self.positions, self.velocities, self.masses, self.calculator)
                 self.time += self.timeStep
                 groups = {"main": self.positions.copy()}
-                self.positionsUpdated.emit(groups)
+                self.positionsReady.emit(groups)
                 stepCount += 1
         except Exception as e:
             print("Simulation error:", e)
