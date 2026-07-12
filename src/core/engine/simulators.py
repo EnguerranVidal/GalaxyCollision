@@ -1,5 +1,5 @@
 import numpy as np
-from PyQt5.QtCore import QThread, pyqtSignal, QObject
+from PyQt5.QtCore import QThread, pyqtSignal, QObject, pyqtSlot
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from src.core.engine.integrators import EulerExplicit, RK4
@@ -28,13 +28,17 @@ class NBodySimulator(QObject):
 
     def setParameters(self, parameters: SimulatorParameters):
         self.parameters = parameters
-        self.gravitationalConstant = parameters.gravitationalConstant
-        self.timeStep = parameters.timeStep
+        self._recreateComponents()
+        self.positions = self.velocities = self.masses = None
+        self.time = 0.0
+
+    def _recreateComponents(self):
+        self.timeStep = self.parameters.timeStep
+        self.gravitationalConstant = self.parameters.gravitationalConstant
         self.is3D = self._getIs3D()
         self.initializer = Initializer(gravitationalConstant=self.gravitationalConstant)
-        self.calculator = self._createCalculator(parameters)
-        self.integrator = self._createIntegrator(parameters)
-        self.positions = self.velocities = self.masses = None
+        self.calculator = self._createCalculator(self.parameters)
+        self.integrator = self._createIntegrator(self.parameters)
 
     def _getIs3D(self):
         if self.parameters.distributionType.lower() == "basic":
@@ -70,12 +74,18 @@ class NBodySimulator(QObject):
             raise ValueError("Unsupported distributionType")
         print(f"Initialized {distributionType} simulation with {self.parameters.numParticles if hasattr(self.parameters, 'numParticles') else 'N'} particles.")
 
+    @pyqtSlot()
     def run(self):
-        print('NBodySimulator thread started')
+        print('NBodySimulator: run() started on thread', QThread.currentThread())
+        if QThread.currentThread() != self.thread():
+            print("WARNING: run() is NOT running on worker thread!")
+        else:
+            print("OK: Running on worker thread")
         self.isRunning = True
         self._stopRequested = False
         try:
-            self.initialize()
+            if self.positions is None:
+                self.initialize()
             stepCount = 0
             while self.isRunning and not self._stopRequested:
                 print(stepCount)
@@ -89,7 +99,9 @@ class NBodySimulator(QObject):
         finally:
             self.isRunning = False
             self.simulationFinished.emit()
+            print('NBodySimulator: run() finished')
 
+    @pyqtSlot()
     def stop(self):
         self._stopRequested = True
         self.isRunning = False

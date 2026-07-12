@@ -3,13 +3,12 @@ import json
 import time
 from typing import Optional
 
-from PyQt5.QtCore import QUrl, QTimer, Qt, QThread, Q_ARG, QMetaObject
+from PyQt5.QtCore import QUrl, QTimer, Qt, QThread, Q_ARG, QMetaObject, pyqtSlot
 from PyQt5.QtGui import QIcon, QDesktopServices
 from PyQt5.QtWidgets import *
 
 from core.engine.simulators import NBodySimulator
 from src.core.engine.parameters import SimulatorParameters
-from src.core.runner import SimulationRunner
 from src.gui.configEditor import SimulationConfigEditorDock
 from src.gui.visualizers.view3d import Universe3dViewWidget
 from src.gui.settings import UiSettings, WindowGeometry
@@ -41,6 +40,8 @@ class MainWindow(QMainWindow):
         self.simulation3dWidget = Universe3dViewWidget()
         self.stackedSimulationWidget.addWidget(self.simulation3dWidget)
         self.setCentralWidget(self.stackedSimulationWidget)
+        print("Main thread:", QThread.currentThread())
+        print("Simulator thread:", self.nBodySimulator.thread())
 
         self._createIcons()
         self._createActions()
@@ -79,17 +80,28 @@ class MainWindow(QMainWindow):
         self.icons['BUG'] = QIcon(os.path.join(self.iconPath, 'bug.png'))
         self.icons['GITHUB'] = QIcon(os.path.join(self.iconPath, 'github.png'))
 
+    @pyqtSlot(SimulatorParameters)
     def _onLaunchSimulation(self, parameters: SimulatorParameters):
         self.activeParameters = parameters
+        QMetaObject.invokeMethod(self.nBodySimulator, "stop", Qt.QueuedConnection)
+        QTimer.singleShot(50, lambda: self._startSimulation(parameters))
+
+    @pyqtSlot()
+    def _onResetSimulation(self):
+        QMetaObject.invokeMethod(self.nBodySimulator, "stop", Qt.QueuedConnection)
+        QTimer.singleShot(50, lambda: self._startSimulation(self.activeParameters))
+
+    def _startSimulation(self, parameters: SimulatorParameters):
         self.nBodySimulator.setParameters(parameters)
         QMetaObject.invokeMethod(self.nBodySimulator, "run", Qt.QueuedConnection)
 
-    def _onResetSimulation(self):
-        QMetaObject.invokeMethod(self.nBodySimulator, "run", Qt.QueuedConnection)
+    def _onSimulationFinished(self):
+        self.statusBar().showMessage("Simulation finished", 3000)
 
     def _onPositionsUpdated(self, groups: dict):
         if self.simulation3dWidget:
-            self.simulation3dWidget.updateData(groups)
+            # self.simulation3dWidget.updateData(groups)
+            self._updateFps()
 
     def _checkEnvironment(self):
         if not os.path.exists(self.settingsPath):
@@ -142,20 +154,26 @@ class MainWindow(QMainWindow):
         self.statusDateTimer.timeout.connect(self._updateStatus)
         self.statusDateTimer.start(1000)
 
-    def _updateStatus(self):
+    def _updateFps(self):
         now = time.perf_counter()
-        fps = 1000 / (now - self.lastUpdate)
+        fps = 1.0 / (now - self.lastUpdate)
         self.lastUpdate = now
         self.avgFps = self.avgFps * 0.8 + fps * 0.2
-        self.fpsLabel.setText('Fps : %0.2f ' % self.avgFps)
+        self.fpsLabel.setText(f'FPS : {self.avgFps:.1f}')
+
+    def _updateStatus(self):
+        self.statusBar().showMessage(f'Time: {getattr(self.nBodySimulator, "time", 0):.1f}s')
 
     def closeEvent(self, event):
         if self.nBodySimulator and self.nBodySimulator.isRunning:
             self.nBodySimulator.stop()
-            self.nBodySimulator.wait(500)
+            if not self.nBodySimulator.wait(1000):
+                print("Warning: Simulator did not stop gracefully")
         self.settings.window.maximized = self.isMaximized()
         if not self.isMaximized():
             g = self.geometry()
             self.settings.window.geometry = WindowGeometry.fromDict({'X': g.x(), 'Y': g.y(), 'WIDTH': g.width(), 'HEIGHT': g.height()})
         self.saveSettings()
+        self.workerThread.quit()
+        self.workerThread.wait(1000)
         event.accept()
