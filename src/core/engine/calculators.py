@@ -1,14 +1,13 @@
+import cupy as cp
 import numpy as np
 from abc import ABC, abstractmethod
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 class Calculator(ABC):
-    def __init__(self, gravitationalConstant: float = 1.0, is3D: bool = True, nbThreads=4):
+    def __init__(self, gravitationalConstant: float = 1.0, is3D: bool = True):
         self.gravitationalConstant = gravitationalConstant
         self.is3D = is3D
         self.softening = 1e-3
-        self.nbThreads = nbThreads
 
     @abstractmethod
     def computeAccelerations(self, positions, masses):
@@ -20,27 +19,12 @@ class NewtonCalculator(Calculator):
         super().__init__(gravitationalConstant=gravitationalConstant, is3D=is3D)
 
     def computeAccelerations(self, positions, masses):
-        n = len(positions)
-        dim = positions.shape[1]
-        accelerations = np.zeros((n, dim), dtype=np.float64)
-
-        def computeAccelerationSingle(i):
-            xDistance = positions[i + 1:] - positions[i]
-            distSquared = np.sum(xDistance ** 2, axis=1) + self.softening ** 2
-            distance = np.sqrt(distSquared)
-            forceMagnitude = masses[i + 1:] / distSquared
-            force = forceMagnitude[:, None] * (xDistance / distance[:, None])
-            singleAcceleration = np.sum(force, axis=0)
-            singleAccelerationOthers = - (force * (self.gravitationalConstant * masses[i] / masses[i + 1:])[:, None])
-            return i, singleAcceleration, singleAccelerationOthers
-
-        with ThreadPoolExecutor(max_workers=self.nbThreads) as executor:
-            futures = [executor.submit(computeAccelerationSingle, i) for i in range(n)]
-            for future in as_completed(futures):
-                i, acceleration, accelerationOthers = future.result()
-                accelerations[i] += acceleration * self.gravitationalConstant
-                accelerations[i + 1:] += accelerationOthers
-        return accelerations
+        xp = cp.get_array_module(positions)
+        massMatrix = masses.reshape((1, -1, 1)) * masses.reshape((-1, 1, 1))
+        displacements = positions.reshape((1, -1, 3)) - positions.reshape((-1, 1, 3))
+        distances = xp.linalg.norm(displacements, axis=2)
+        forces = self.gravitationalConstant * displacements * massMatrix / xp.expand_dims(distances + self.softening, 2) ** 3
+        return forces.sum(axis=1) / masses.reshape(-1, 1)
 
 
 class Node:
@@ -78,11 +62,11 @@ class BarnesHutCalculator(Calculator):
             if len(node.particles) == 0:
                 node.particles.append(index)
                 node.mass = mass
-                node.centerOfMass = pos.copy()
+                node.massCenter = pos.copy()
                 return
             node.isLeaf = False
             self._subdivide(node)
-            oldPosition = node.centerOfMass
+            oldPosition = node.massCenter
             oldMass = node.mass
             oldIndex = node.particles[0]
             node.particles = []
@@ -90,7 +74,7 @@ class BarnesHutCalculator(Calculator):
             self._insert(node, pos, mass, index)
         else:
             node.mass += mass
-            node.centerOfMass = (node.centerOfMass * (node.mass - mass) + pos * mass) / node.mass
+            node.massCenter = (node.massCenter * (node.mass - mass) + pos * mass) / node.mass
             childIndex = self._getChildIndex(node, pos)
             self._insert(node.children[childIndex], pos, mass, index)
 
@@ -113,15 +97,8 @@ class BarnesHutCalculator(Calculator):
         self.buildTree(positions, masses)
         n = len(positions)
         accelerations = np.zeros_like(positions)
-
-        def calculateForceSingle(i):
-            return i, self._calculateForce(self.root, positions[i], i)
-
-        with ThreadPoolExecutor(max_workers=self.nbThreads) as executor:
-            futures = [executor.submit(calculateForceSingle, i) for i in range(n)]
-            for future in as_completed(futures):
-                i, force = future.result()
-                accelerations[i] = force
+        for i in range(n):
+            accelerations[i] = self._calculateForce(self.root, positions[i], i)
         return accelerations * self.gravitationalConstant
 
     def _calculateForce(self, node, pos, particleIndex):

@@ -100,7 +100,7 @@ class MainWindow(QMainWindow):
 
     def _onPositionsUpdated(self, groups: dict):
         if self.simulation3dWidget:
-            # self.simulation3dWidget.updateData(groups)
+            self.simulation3dWidget.updateData(groups)
             self._updateFps()
 
     def _checkEnvironment(self):

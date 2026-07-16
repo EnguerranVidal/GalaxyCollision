@@ -1,6 +1,4 @@
-import numpy as np
 from PyQt5.QtCore import QThread, pyqtSignal, QObject, pyqtSlot
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from src.core.engine.integrators import EulerExplicit, RK4
 from src.core.engine.calculators import BarnesHutCalculator, NewtonCalculator
@@ -88,7 +86,6 @@ class NBodySimulator(QObject):
                 self.initialize()
             stepCount = 0
             while self.isRunning and not self._stopRequested:
-                print(stepCount)
                 self.positions, self.velocities = self.integrator.step(self.positions, self.velocities, self.masses, self.calculator)
                 self.time += self.timeStep
                 groups = {"main": self.positions.copy()}
