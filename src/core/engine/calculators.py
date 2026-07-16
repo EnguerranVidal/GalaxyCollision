@@ -10,7 +10,7 @@ class Calculator(ABC):
         self.softening = 1e-3
 
     @abstractmethod
-    def computeAccelerations(self, positions, masses):
+    def computeAccelerations(self, particles):
         pass
 
 
@@ -18,7 +18,7 @@ class NewtonCalculator(Calculator):
     def __init__(self, gravitationalConstant=1.0, is3D=True):
         super().__init__(gravitationalConstant=gravitationalConstant, is3D=is3D)
 
-    def computeAccelerations(self, positions, masses):
+    def computeAccelerations(self, particles):
         xp = cp.get_array_module(positions)
         massMatrix = masses.reshape((1, -1, 1)) * masses.reshape((-1, 1, 1))
         displacements = positions.reshape((1, -1, 3)) - positions.reshape((-1, 1, 3))
@@ -93,7 +93,7 @@ class BarnesHutCalculator(Calculator):
                 idx |= (1 << dimension)
         return idx
 
-    def computeAccelerations(self, positions, masses):
+    def computeAccelerations(self, particles):
         self.buildTree(positions, masses)
         n = len(positions)
         accelerations = np.zeros_like(positions)
