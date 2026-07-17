@@ -56,7 +56,6 @@ class SimulatorParameters:
     name: str = "Untitled Simulation"
     timeStep: float = 0.001
     theta: float = 0.5
-    is3D: bool = True
     gravitationalConstant: float = 1.0
     integratorType: str = "RK4"
     distributionType: str = "GALAXY"
@@ -64,8 +63,8 @@ class SimulatorParameters:
     endless: bool = True
     maxTime: float = 1000.0
     saveResults: bool = False
-    basicDistributionParameters: Optional[BasicDistributionParameters] = BasicDistributionParameters(is3D)
-    galaxyDistributionParameters: Optional[GalaxyDistributionParameters] = GalaxyDistributionParameters(is3D)
+    basicDistributionParameters: Optional[BasicDistributionParameters] = BasicDistributionParameters()
+    galaxyDistributionParameters: Optional[GalaxyDistributionParameters] = GalaxyDistributionParameters()
 
     def __eq__(self, other):
         if not isinstance(other, SimulatorParameters):
@@ -75,7 +74,6 @@ class SimulatorParameters:
                 abs(self.timeStep - other.timeStep) < 1e-9 and
                 abs(self.theta - other.theta) < 1e-9 and
                 abs(self.gravitationalConstant - other.gravitationalConstant) < 1e-9 and
-                self.is3D == other.is3D and
                 self.integratorType.upper() == other.integratorType.upper() and
                 self.distributionType.upper() == other.distributionType.upper() and
                 self.calculatorType.upper() == other.calculatorType.upper() and

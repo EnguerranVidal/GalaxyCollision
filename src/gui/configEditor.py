@@ -293,4 +293,3 @@ class GalaxyDistributionWidget(QWidget):
             self.totalMass.blockSignals(False)
             self.radius.blockSignals(False)
             self.height.blockSignals(False)
-            self.is3D.blockSignals(False)

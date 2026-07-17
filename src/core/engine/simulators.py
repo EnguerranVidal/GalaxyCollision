@@ -15,7 +15,6 @@ class NBodySimulator(QObject):
         self.parameters = parameters
         self.timeStep = parameters.timeStep
         self.gravitationalConstant = parameters.gravitationalConstant
-        self.is3D = self._getIs3D()
         self.initializer = Initializer(gravitationalConstant=self.gravitationalConstant)
         self.calculator = self._createCalculator(parameters)
         self.integrator = self._createIntegrator(parameters)
@@ -33,16 +32,9 @@ class NBodySimulator(QObject):
     def _recreateComponents(self):
         self.timeStep = self.parameters.timeStep
         self.gravitationalConstant = self.parameters.gravitationalConstant
-        self.is3D = self._getIs3D()
         self.initializer = Initializer(gravitationalConstant=self.gravitationalConstant)
         self.calculator = self._createCalculator(self.parameters)
         self.integrator = self._createIntegrator(self.parameters)
-
-    def _getIs3D(self):
-        if self.parameters.distributionType.lower() == "basic":
-            return self.parameters.basicDistributionParameters.is3D
-        else:
-            return self.parameters.galaxyDistributionParameters.is3D
 
     @staticmethod
     def _createIntegrator(parameters: SimulatorParameters):
@@ -56,18 +48,18 @@ class NBodySimulator(QObject):
     def _createCalculator(parameters: SimulatorParameters):
         calculatorType = parameters.calculatorType.upper()
         if calculatorType == "BARNES_HUT":
-            return BarnesHutCalculator(theta=parameters.theta, gravitationalConstant=parameters.gravitationalConstant, is3D=parameters.is3D)
+            return BarnesHutCalculator(theta=parameters.theta, gravitationalConstant=parameters.gravitationalConstant)
         else:
-            return NewtonCalculator(gravitationalConstant=parameters.gravitationalConstant, is3D=parameters.is3D)
+            return NewtonCalculator(gravitationalConstant=parameters.gravitationalConstant)
 
     def initialize(self):
         distributionType = self.parameters.distributionType.lower()
         if distributionType == "basic":
             p = self.parameters.basicDistributionParameters
-            self.positions, self.velocities, self.masses = self.initializer.basicDistribution(numParticles=p.nbParticles, positionScale=p.positionScale, velocityScale=p.velocityScale, is3D=p.is3D)
+            self.positions, self.velocities, self.masses = self.initializer.basicDistribution(numParticles=p.nbParticles, positionScale=p.positionScale, velocityScale=p.velocityScale)
         elif distributionType == "galaxy":
             p = self.parameters.galaxyDistributionParameters
-            self.positions, self.velocities, self.masses = self.initializer.galaxyDistribution(numParticles=p.nbParticles, totalMass=p.totalMass, radius=p.radius, height=p.height, is3D=p.is3D)
+            self.positions, self.velocities, self.masses = self.initializer.galaxyDistribution(numParticles=p.nbParticles, totalMass=p.totalMass, radius=p.radius, height=p.height)
         else:
             raise ValueError("Unsupported distributionType")
         print(f"Initialized {distributionType} simulation with {self.parameters.numParticles if hasattr(self.parameters, 'nbParticles') else 'N'} particles.")

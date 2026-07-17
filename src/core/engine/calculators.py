@@ -4,9 +4,8 @@ from abc import ABC, abstractmethod
 
 
 class Calculator(ABC):
-    def __init__(self, gravitationalConstant: float = 1.0, is3D: bool = True):
+    def __init__(self, gravitationalConstant: float = 1.0):
         self.gravitationalConstant = gravitationalConstant
-        self.is3D = is3D
         self.softening = 1e-3
 
     @abstractmethod
@@ -15,8 +14,8 @@ class Calculator(ABC):
 
 
 class NewtonCalculator(Calculator):
-    def __init__(self, gravitationalConstant=1.0, is3D=True):
-        super().__init__(gravitationalConstant=gravitationalConstant, is3D=is3D)
+    def __init__(self, gravitationalConstant=1.0):
+        super().__init__(gravitationalConstant=gravitationalConstant)
 
     def computeAccelerations(self, particles):
         xp = cp.get_array_module(positions)
@@ -28,20 +27,19 @@ class NewtonCalculator(Calculator):
 
 
 class Node:
-    def __init__(self, center, size, is3D=False):
+    def __init__(self, center, size):
         self.center = center
         self.size = size
-        self.is3D = is3D
         self.mass = 0.0
-        self.massCenter = np.zeros(3 if is3D else 2, dtype=np.float64)
+        self.massCenter = np.zeros(3, dtype=np.float64)
         self.particles = []
         self.children = []
         self.isLeaf = True
 
 
 class BarnesHutCalculator(Calculator):
-    def __init__(self, gravitationalConstant=1.0, is3D=True, theta=0.5):
-        super().__init__(gravitationalConstant=gravitationalConstant, is3D=is3D)
+    def __init__(self, gravitationalConstant=1.0, theta=0.5):
+        super().__init__(gravitationalConstant=gravitationalConstant)
         self.theta = theta
         self.root = None
 
@@ -53,7 +51,7 @@ class BarnesHutCalculator(Calculator):
         maxPosition = np.max(positions, axis=0)
         center = (minPosition + maxPosition) / 2.0
         size = np.max(maxPosition - minPosition) * 1.1
-        self.root = Node(center, size, self.is3D)
+        self.root = Node(center, size)
         for i in range(n):
             self._insert(self.root, positions[i], masses[i], i)
 
@@ -78,17 +76,19 @@ class BarnesHutCalculator(Calculator):
             childIndex = self._getChildIndex(node, pos)
             self._insert(node.children[childIndex], pos, mass, index)
 
-    def _subdivide(self, node):
+    @staticmethod
+    def _subdivide(node):
         half = node.size / 2.0
-        offsets = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0], [0, 0, 1], [1, 0, 1], [0, 1, 1], [1, 1, 1]])[: (8 if self.is3D else 4)]
+        offsets = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0], [0, 0, 1], [1, 0, 1], [0, 1, 1], [1, 1, 1]])[: 8]
         for offset in offsets:
             childCenter = node.center + (offset - 0.5) * half
-            child = Node(childCenter, half, self.is3D)
+            child = Node(childCenter, half)
             node.children.append(child)
 
-    def _getChildIndex(self, node, pos):
+    @staticmethod
+    def _getChildIndex(node, pos):
         idx = 0
-        for dimension in range(3 if self.is3D else 2):
+        for dimension in range(3):
             if pos[dimension] > node.center[dimension]:
                 idx |= (1 << dimension)
         return idx
