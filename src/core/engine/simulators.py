@@ -2,7 +2,7 @@ from PyQt5.QtCore import QThread, pyqtSignal, QObject, pyqtSlot
 
 from src.core.engine.integrators import EulerExplicit, RK4
 from src.core.engine.calculators import BarnesHutCalculator, NewtonCalculator
-from src.core.engine.initializers import Initializer
+from src.core.engine.distributions import Initializer
 from src.core.engine.parameters import SimulatorParameters
 
 
@@ -64,13 +64,13 @@ class NBodySimulator(QObject):
         distributionType = self.parameters.distributionType.lower()
         if distributionType == "basic":
             p = self.parameters.basicDistributionParameters
-            self.positions, self.velocities, self.masses = self.initializer.basicDistribution(numParticles=p.numParticles, positionScale=p.positionScale, velocityScale=p.velocityScale, is3D=p.is3D)
+            self.positions, self.velocities, self.masses = self.initializer.basicDistribution(numParticles=p.nbParticles, positionScale=p.positionScale, velocityScale=p.velocityScale, is3D=p.is3D)
         elif distributionType == "galaxy":
             p = self.parameters.galaxyDistributionParameters
-            self.positions, self.velocities, self.masses = self.initializer.galaxyDistribution(numParticles=p.numParticles, totalMass=p.totalMass, radius=p.radius, height=p.height, is3D=p.is3D)
+            self.positions, self.velocities, self.masses = self.initializer.galaxyDistribution(numParticles=p.nbParticles, totalMass=p.totalMass, radius=p.radius, height=p.height, is3D=p.is3D)
         else:
             raise ValueError("Unsupported distributionType")
-        print(f"Initialized {distributionType} simulation with {self.parameters.numParticles if hasattr(self.parameters, 'numParticles') else 'N'} particles.")
+        print(f"Initialized {distributionType} simulation with {self.parameters.numParticles if hasattr(self.parameters, 'nbParticles') else 'N'} particles.")
 
     @pyqtSlot()
     def run(self):

@@ -4,50 +4,51 @@ from typing import Optional
 
 @dataclass
 class BasicDistributionParameters:
-    numParticles: int = 1000
+    nbParticles: int = 1000
     positionScale: float = 10.0
     velocityScale: float = 1.0
-    massMin: float = 0.1
-    massMax: float = 1.0
-    is3D: bool = True
+    massMinimum: float = 0.1
+    massMaximum: float = 1.0
 
     def __eq__(self, other) -> bool:
         if not isinstance(other, BasicDistributionParameters):
             return NotImplemented
         return (
-                self.numParticles == other.numParticles and
+                self.nbParticles == other.nbParticles and
                 abs(self.positionScale - other.positionScale) < 1e-9 and
                 abs(self.velocityScale - other.velocityScale) < 1e-9 and
-                abs(self.massMin - other.massMin) < 1e-9 and
-                abs(self.massMax - other.massMax) < 1e-9 and
-                self.is3D == other.is3D
+                abs(self.massMinimum - other.massMinimum) < 1e-9 and
+                abs(self.massMaximum - other.massMaximum) < 1e-9
         )
 
     def __repr__(self):
-        return f"BasicDistributionParameters(numParticles={self.numParticles}, positionScale={self.positionScale}, is3D={self.is3D})"
+        return f"BasicDistributionParameters(numParticles={self.nbParticles}, positionScale={self.positionScale})"
 
 
 @dataclass
 class GalaxyDistributionParameters:
-    numParticles: int = 5000
+    nbParticles: int = 5000
     totalMass: float = 1000.0
     radius: float = 10.0
     height: float = 2.0
-    is3D: bool = True
+    bulgeFraction: float = 0.2
+    haloFraction: float = 0.5
+    velocityDispersion: float = 0.1
+    plummerRadius: float = 3.0
+    haloRadius: float = 50.0
 
     def __eq__(self, other) -> bool:
         if not isinstance(other, GalaxyDistributionParameters):
             return NotImplemented
         return (
-                self.numParticles == other.numParticles and
+                self.nbParticles == other.nbParticles and
                 abs(self.totalMass - other.totalMass) < 1e-9 and
                 abs(self.radius - other.radius) < 1e-9 and
-                abs(self.height - other.height) < 1e-9 and
-                self.is3D == other.is3D
+                abs(self.height - other.height) < 1e-9
         )
 
     def __repr__(self):
-        return f"GalaxyDistributionParameters(numParticles={self.numParticles}, radius={self.radius}, height={self.height}, is3D={self.is3D})"
+        return f"GalaxyDistributionParameters(numParticles={self.nbParticles}, radius={self.radius}, height={self.height})"
 
 
 @dataclass
@@ -91,5 +92,5 @@ class SimulatorParameters:
 
     def __repr__(self):
         distributionType = self.galaxyDistributionParameters if self.distributionType.upper() == "GALAXY" else self.basicDistributionParameters
-        nbParticles = distributionType.numParticles if distributionType else 0
+        nbParticles = distributionType.nbParticles if distributionType else 0
         return f"SimulatorParameters(name='{self.name}', distribution={self.distributionType}, particles={nbParticles})"

@@ -196,7 +196,7 @@ class BasicDistributionWidget(QWidget):
         # PARAMETERS USER INTERFACE
         self.numParticles = QSpinBox()
         self.numParticles.setRange(100, 100000)
-        self.numParticles.setValue(self.parameters.numParticles)
+        self.numParticles.setValue(self.parameters.nbParticles)
         self.numParticles.valueChanged.connect(self.changed.emit)
         self.positionScale = QDoubleSpinBox()
         self.positionScale.setRange(1.0, 100.0)
@@ -206,42 +206,34 @@ class BasicDistributionWidget(QWidget):
         self.velocityScale.setRange(0.1, 10.0)
         self.velocityScale.setValue(self.parameters.velocityScale)
         self.velocityScale.valueChanged.connect(self.changed.emit)
-        self.is3D = QCheckBox("3D Simulation")
-        self.is3D.setChecked(self.parameters.is3D)
-        self.is3D.stateChanged.connect(self.changed.emit)
         # MAIN LAYOUT
         group = QGroupBox("Basic Random Distribution Parameters")
         form = QFormLayout(group)
         form.addRow("Number of Particles:", self.numParticles)
         form.addRow("Position Scale:", self.positionScale)
         form.addRow("Velocity Scale:", self.velocityScale)
-        form.addRow("", self.is3D)
         mainLayout = QVBoxLayout(self)
         mainLayout.addWidget(group)
 
     def getParameters(self):
-        self.parameters.numParticles = self.numParticles.value()
+        self.parameters.nbParticles = self.numParticles.value()
         self.parameters.positionScale = self.positionScale.value()
         self.parameters.velocityScale = self.velocityScale.value()
-        self.parameters.is3D = self.is3D.isChecked()
         return self.parameters
 
     def syncUIFromParameters(self, parameters: BasicDistributionParameters):
         self.numParticles.blockSignals(True)
         self.positionScale.blockSignals(True)
         self.velocityScale.blockSignals(True)
-        self.is3D.blockSignals(True)
         try:
-            self.numParticles.setValue(parameters.numParticles)
+            self.numParticles.setValue(parameters.nbParticles)
             self.positionScale.setValue(parameters.positionScale)
             self.velocityScale.setValue(parameters.velocityScale)
-            self.is3D.setChecked(parameters.is3D)
             self.parameters = parameters
         finally:
             self.numParticles.blockSignals(False)
             self.positionScale.blockSignals(False)
             self.velocityScale.blockSignals(False)
-            self.is3D.blockSignals(False)
 
 
 
@@ -254,7 +246,7 @@ class GalaxyDistributionWidget(QWidget):
         # PARAMETERS USER INTERFACE
         self.numParticles = QSpinBox()
         self.numParticles.setRange(500, 100000)
-        self.numParticles.setValue(self.parameters.numParticles)
+        self.numParticles.setValue(self.parameters.nbParticles)
         self.numParticles.valueChanged.connect(self.changed.emit)
         self.totalMass = QDoubleSpinBox()
         self.totalMass.setRange(100.0, 10000.0)
@@ -268,9 +260,6 @@ class GalaxyDistributionWidget(QWidget):
         self.height.setRange(0.5, 30.0)
         self.height.setValue(self.parameters.height)
         self.height.valueChanged.connect(self.changed.emit)
-        self.is3D = QCheckBox("3D Simulation")
-        self.is3D.setChecked(self.parameters.is3D)
-        self.is3D.stateChanged.connect(self.changed.emit)
         # MAIN LAYOUT
         group = QGroupBox("Galaxy Disk Distribution Parameters")
         form = QFormLayout(group)
@@ -278,16 +267,14 @@ class GalaxyDistributionWidget(QWidget):
         form.addRow("Total Mass:", self.totalMass)
         form.addRow("Radius:", self.radius)
         form.addRow("Disk Height:", self.height)
-        form.addRow("", self.is3D)
         mainLayout = QVBoxLayout(self)
         mainLayout.addWidget(group)
 
     def getParameters(self):
-        self.parameters.numParticles = self.numParticles.value()
+        self.parameters.nbParticles = self.numParticles.value()
         self.parameters.totalMass = self.totalMass.value()
         self.parameters.radius = self.radius.value()
         self.parameters.height = self.height.value()
-        self.parameters.is3D = self.is3D.isChecked()
         return self.parameters
 
     def syncUIFromParameters(self, parameters: GalaxyDistributionParameters):
@@ -295,13 +282,11 @@ class GalaxyDistributionWidget(QWidget):
         self.totalMass.blockSignals(True)
         self.radius.blockSignals(True)
         self.height.blockSignals(True)
-        self.is3D.blockSignals(True)
         try:
-            self.numParticles.setValue(parameters.numParticles)
+            self.numParticles.setValue(parameters.nbParticles)
             self.totalMass.setValue(parameters.totalMass)
             self.radius.setValue(parameters.radius)
             self.height.setValue(parameters.height)
-            self.is3D.setChecked(parameters.is3D)
             self.parameters = parameters
         finally:
             self.numParticles.blockSignals(False)

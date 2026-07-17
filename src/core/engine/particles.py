@@ -53,7 +53,7 @@ class ParticleGroup:
         def groupToCpu(self):
             if self.device == 'cpu':
                 return self
-            particleGroup = ParticleGroup(self.nbParticles, device='cpu')
+            particleGroup = ParticleGroup(self.nbParticles, device='cpu', dimension=self.dimension)
             particleGroup.positions = self.positions.get()
             particleGroup.velocities = self.velocities.get()
             particleGroup.accelerations = self.accelerations.get()
@@ -63,7 +63,7 @@ class ParticleGroup:
         def groupToGpu(self):
             if self.device == 'gpu':
                 return self
-            particleGroup = ParticleGroup(self.nbParticles, device='gpu')
+            particleGroup = ParticleGroup(self.nbParticles, device='gpu', dimension=self.dimension)
             particleGroup.positions = cp.array(self.positions, dtype=cp.float32)
             particleGroup.velocities = cp.array(self.velocities, dtype=cp.float32)
             particleGroup.accelerations = cp.array(self.accelerations, dtype=cp.float32)
