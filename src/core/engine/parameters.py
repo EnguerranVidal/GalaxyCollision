@@ -44,7 +44,12 @@ class GalaxyDistributionParameters:
                 self.nbParticles == other.nbParticles and
                 abs(self.totalMass - other.totalMass) < 1e-9 and
                 abs(self.radius - other.radius) < 1e-9 and
-                abs(self.height - other.height) < 1e-9
+                abs(self.height - other.height) < 1e-9 and
+                abs(self.bulgeFraction - other.bulgeFraction) < 1e-9 and
+                abs(self.haloFraction - other.haloFraction) < 1e-9 and
+                abs(self.velocityDispersion - other.velocityDispersion) < 1e-9 and
+                abs(self.plummerRadius - other.plummerRadius) < 1e-9 and
+                abs(self.haloRadius - other.haloRadius) < 1e-9
         )
 
     def __repr__(self):
@@ -56,6 +61,8 @@ class SimulatorParameters:
     name: str = "Untitled Simulation"
     timeStep: float = 0.001
     theta: float = 0.5
+    seed: Optional[int] = None
+    device: str = "GPU"
     gravitationalConstant: float = 1.0
     integratorType: str = "RK4"
     distributionType: str = "GALAXY"
@@ -73,6 +80,8 @@ class SimulatorParameters:
                 self.name == other.name and
                 abs(self.timeStep - other.timeStep) < 1e-9 and
                 abs(self.theta - other.theta) < 1e-9 and
+                self.seed == other.seed and
+                self.device == other.device and
                 abs(self.gravitationalConstant - other.gravitationalConstant) < 1e-9 and
                 self.integratorType.upper() == other.integratorType.upper() and
                 self.distributionType.upper() == other.distributionType.upper() and
@@ -91,4 +100,4 @@ class SimulatorParameters:
     def __repr__(self):
         distributionType = self.galaxyDistributionParameters if self.distributionType.upper() == "GALAXY" else self.basicDistributionParameters
         nbParticles = distributionType.nbParticles if distributionType else 0
-        return f"SimulatorParameters(name='{self.name}', distribution={self.distributionType}, particles={nbParticles})"
+        return f"SimulatorParameters(name='{self.name}', seed={self.seed}, device={self.device}, distribution={self.distributionType}, particles={nbParticles})"

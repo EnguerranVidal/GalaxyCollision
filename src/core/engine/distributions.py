@@ -18,7 +18,7 @@ class Distribution:
     def setVelocity(self, velocity):
         self.velocityOffset = velocity
 
-    def generate(self, parameters: BasicDistributionParameters, seed=None):
+    def generate(self, parameters: BasicDistributionParameters = None, seed=None):
         randomGenerator = np.random.RandomState(seed)
         positions = (randomGenerator.rand(parameters.nbParticles, 3) * 2 - 1) * parameters.positionScale
         masses = randomGenerator.uniform(parameters.massMinimum, parameters.massMaximum, parameters.nbParticles)
