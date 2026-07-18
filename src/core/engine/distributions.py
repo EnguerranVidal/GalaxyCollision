@@ -1,14 +1,12 @@
 import numpy as np
 
-from src.core.engine.parameters import BasicDistributionParameters, GalaxyDistributionParameters
+from src.core.engine.parameters import SimulatorParameters
 from src.core.engine.particles import ParticleGroup
 
 
 class Distribution:
-    def __init__(self, gravitationalConstant=1.0, device='cpu'):
-        self.device = device
+    def __init__(self):
         self.nbParticles = 0
-        self.gravitationalConstant = gravitationalConstant
         self.positionOffset = np.zeros(3, dtype=np.float32)
         self.velocityOffset = np.zeros(3, dtype=np.float32)
 
@@ -18,17 +16,18 @@ class Distribution:
     def setVelocity(self, velocity):
         self.velocityOffset = velocity
 
-    def generate(self, parameters: BasicDistributionParameters = None, seed=None):
+    def generate(self, simParameters: SimulatorParameters = None):
+        parameters, seed, device = simParameters.basicDistributionParameters, simParameters.seed, simParameters.device
         randomGenerator = np.random.RandomState(seed)
         positions = (randomGenerator.rand(parameters.nbParticles, 3) * 2 - 1) * parameters.positionScale
         masses = randomGenerator.uniform(parameters.massMinimum, parameters.massMaximum, parameters.nbParticles)
         velocities = randomGenerator.randn(parameters.nbParticles, 3) * parameters.velocityScale
-        return self.createParticleGroup(positions, velocities, masses)
+        return self.createParticleGroup(positions, velocities, masses, device)
 
-    def createParticleGroup(self, positions, velocities, masses):
+    def createParticleGroup(self, positions, velocities, masses, device):
         positions += self.positionOffset
         velocities += self.velocityOffset
-        particleGroup = ParticleGroup(nbParticles=len(positions), device=self.device)
+        particleGroup = ParticleGroup(nbParticles=len(positions), device=device)
         particleGroup.setPositions(positions)
         particleGroup.setVelocities(velocities)
         particleGroup.setMasses(masses)
@@ -39,7 +38,8 @@ class Distribution:
 
 
 class GalaxyDistribution(Distribution):
-    def generate(self, parameters: GalaxyDistributionParameters, seed=None):
+    def generate(self, simParameters: SimulatorParameters = None):
+        parameters, seed, device = simParameters.galaxyDistributionParameters, simParameters.seed, simParameters.device
         randomGenerator = np.random.RandomState(seed)
 
         # EXPONENTIAL GALAXY DISK DISTRIBUTION
@@ -84,4 +84,4 @@ class GalaxyDistribution(Distribution):
         positions = np.concatenate([diskPositions, bulgePositions, haloPositions])
         masses = np.concatenate([diskMasses, bulgeMasses, haloMasses])
         velocities = np.concatenate([diskVelocities, bulgeVelocities, haloVelocities])
-        return self.createParticleGroup(positions, velocities, masses)
+        return self.createParticleGroup(positions, velocities, masses, device)

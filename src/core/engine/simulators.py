@@ -1,8 +1,8 @@
 from PyQt5.QtCore import QThread, pyqtSignal, QObject, pyqtSlot
 
 from src.core.engine.integrators import EulerExplicit, RK4
-from src.core.engine.calculators import BarnesHutCalculator, NewtonCalculator
-from src.core.engine.distributions import Initializer
+from src.core.engine.calculators import NewtonCalculator
+from src.core.engine.distributions import Distribution, GalaxyDistribution
 from src.core.engine.parameters import SimulatorParameters
 
 
@@ -15,10 +15,10 @@ class NBodySimulator(QObject):
         self.parameters = parameters
         self.timeStep = parameters.timeStep
         self.gravitationalConstant = parameters.gravitationalConstant
-        self.initializer = Initializer(gravitationalConstant=self.gravitationalConstant)
         self.calculator = self._createCalculator(parameters)
         self.integrator = self._createIntegrator(parameters)
-        self.positions = self.velocities = self.masses = None
+        self.particles = self._createDistribution(parameters)
+        self.particles = None
         self.time = 0.0
         self.isRunning = False
         self._stopRequested = False
@@ -26,15 +26,15 @@ class NBodySimulator(QObject):
     def setParameters(self, parameters: SimulatorParameters):
         self.parameters = parameters
         self._recreateComponents()
-        self.positions = self.velocities = self.masses = None
+        self.particles = None
         self.time = 0.0
 
     def _recreateComponents(self):
         self.timeStep = self.parameters.timeStep
         self.gravitationalConstant = self.parameters.gravitationalConstant
-        self.initializer = Initializer(gravitationalConstant=self.gravitationalConstant)
         self.calculator = self._createCalculator(self.parameters)
         self.integrator = self._createIntegrator(self.parameters)
+        self.particles = self._createDistribution(self.parameters)
 
     @staticmethod
     def _createIntegrator(parameters: SimulatorParameters):
@@ -47,22 +47,19 @@ class NBodySimulator(QObject):
     @staticmethod
     def _createCalculator(parameters: SimulatorParameters):
         calculatorType = parameters.calculatorType.upper()
-        if calculatorType == "BARNES_HUT":
-            return BarnesHutCalculator(theta=parameters.theta, gravitationalConstant=parameters.gravitationalConstant)
+        if calculatorType == "NEWTON":
+            return NewtonCalculator(gravitationalConstant=parameters.gravitationalConstant)
         else:
             return NewtonCalculator(gravitationalConstant=parameters.gravitationalConstant)
 
-    def initialize(self):
-        distributionType = self.parameters.distributionType.lower()
-        if distributionType == "basic":
-            p = self.parameters.basicDistributionParameters
-            self.positions, self.velocities, self.masses = self.initializer.basicDistribution(numParticles=p.nbParticles, positionScale=p.positionScale, velocityScale=p.velocityScale)
-        elif distributionType == "galaxy":
-            p = self.parameters.galaxyDistributionParameters
-            self.positions, self.velocities, self.masses = self.initializer.galaxyDistribution(numParticles=p.nbParticles, totalMass=p.totalMass, radius=p.radius, height=p.height)
-        else:
-            raise ValueError("Unsupported distributionType")
-        print(f"Initialized {distributionType} simulation with {self.parameters.numParticles if hasattr(self.parameters, 'nbParticles') else 'N'} particles.")
+    @staticmethod
+    def _createDistribution(parameters: SimulatorParameters):
+        distributionClasses = {"BASIC": Distribution, "GALAXY": GalaxyDistribution}
+        distributionType = parameters.distributionType.upper()
+        try:
+            return distributionClasses[distributionType]().generate(parameters)
+        except KeyError:
+            raise ValueError(f"Unknown distribution type: {distributionType}")
 
     @pyqtSlot()
     def run(self):
@@ -74,13 +71,13 @@ class NBodySimulator(QObject):
         self.isRunning = True
         self._stopRequested = False
         try:
-            if self.positions is None:
-                self.initialize()
+            if self.particles is None:
+                self.particles = self._createDistribution(self.parameters)
             stepCount = 0
             while self.isRunning and not self._stopRequested:
-                self.positions, self.velocities = self.integrator.step(self.positions, self.velocities, self.masses, self.calculator)
+                self.particles = self.integrator.step(self.particles, self.calculator)
                 self.time += self.timeStep
-                groups = {"main": self.positions.copy()}
+                groups = {"main": self.particles}
                 self.positionsReady.emit(groups)
                 stepCount += 1
         except Exception as e:
@@ -98,7 +95,6 @@ class NBodySimulator(QObject):
     def step(self):
         if self.positions is None:
             self.initialize()
-        self.positions, self.velocities = self.integrator.step(
-            self.positions, self.velocities, self.masses, self.calculator)
+        self.particles = self.integrator.step(self.positions, self.velocities, self.masses, self.calculator)
         self.time += self.timeStep
         return self.positions, self.velocities
