@@ -3,7 +3,7 @@ import json
 import time
 from typing import Optional
 
-from PyQt5.QtCore import QUrl, QTimer, Qt, QThread, Q_ARG, QMetaObject, pyqtSlot
+from PyQt5.QtCore import QUrl, QTimer, Qt, QThread, Q_ARG, QMetaObject, pyqtSlot, QEventLoop
 from PyQt5.QtGui import QIcon, QDesktopServices
 from PyQt5.QtWidgets import *
 
@@ -30,6 +30,7 @@ class MainWindow(QMainWindow):
         self.workerThread = QThread(self)
         self.nBodySimulator = NBodySimulator(self.activeParameters)
         self.nBodySimulator.positionsReady.connect(self._onPositionsUpdated)
+        self.nBodySimulator.simulationFinished.connect(self._onSimulationFinished)
         self.nBodySimulator.moveToThread(self.workerThread)
         self.workerThread.start()
         self.configEditorDock = SimulationConfigEditorDock(self.activeParameters, self)
@@ -83,17 +84,18 @@ class MainWindow(QMainWindow):
     @pyqtSlot(SimulatorParameters)
     def _onLaunchSimulation(self, parameters: SimulatorParameters):
         self.activeParameters = parameters
-        QMetaObject.invokeMethod(self.nBodySimulator, "stop", Qt.QueuedConnection)
-        QTimer.singleShot(50, lambda: self._startSimulation(parameters))
+        self._restartSimulation(parameters)
 
     @pyqtSlot()
     def _onResetSimulation(self):
-        QMetaObject.invokeMethod(self.nBodySimulator, "stop", Qt.QueuedConnection)
-        QTimer.singleShot(50, lambda: self._startSimulation(self.activeParameters))
+        self._restartSimulation(self.activeParameters)
 
-    def _startSimulation(self, parameters: SimulatorParameters):
-        self.nBodySimulator.setParameters(parameters)
-        QMetaObject.invokeMethod(self.nBodySimulator, "run", Qt.QueuedConnection)
+    def _restartSimulation(self, parameters: SimulatorParameters):
+        QMetaObject.invokeMethod(self.nBodySimulator, "stop", Qt.QueuedConnection)
+        QTimer.singleShot(30, lambda: self._startNewSimulation(parameters))
+
+    def _startNewSimulation(self, parameters: SimulatorParameters):
+        QMetaObject.invokeMethod(self.nBodySimulator, "prepareAndRun", Qt.QueuedConnection, Q_ARG(object, parameters))
 
     def _onSimulationFinished(self):
         self.statusBar().showMessage("Simulation finished", 3000)
@@ -166,14 +168,32 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         if self.nBodySimulator and self.nBodySimulator.isRunning:
+            print("Closing: Stopping simulation...")
             self.nBodySimulator.stop()
-            if not self.nBodySimulator.wait(1000):
-                print("Warning: Simulator did not stop gracefully")
+            loop = QEventLoop()
+            QTimer.singleShot(300, loop.quit)
+            finished = False
+
+            def onFinished():
+                nonlocal finished
+                finished = True
+                loop.quit()
+
+            connection = self.nBodySimulator.simulationFinished.connect(onFinished)
+            loop.exec_()
+            self.nBodySimulator.simulationFinished.disconnect(connection)
+            if not finished:
+                print("Warning: Simulator did not stop gracefully within timeout")
         self.settings.window.maximized = self.isMaximized()
         if not self.isMaximized():
             g = self.geometry()
             self.settings.window.geometry = WindowGeometry.fromDict({'X': g.x(), 'Y': g.y(), 'WIDTH': g.width(), 'HEIGHT': g.height()})
         self.saveSettings()
-        self.workerThread.quit()
-        self.workerThread.wait(1000)
+        if self.workerThread and self.workerThread.isRunning():
+            print("Closing: Quitting worker thread...")
+            self.workerThread.quit()
+            if not self.workerThread.wait(1500):
+                print("Warning: Worker thread did not quit gracefully - forcing termination")
+                self.workerThread.terminate()
+                self.workerThread.wait(500)
         event.accept()

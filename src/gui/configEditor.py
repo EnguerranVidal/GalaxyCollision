@@ -1,3 +1,4 @@
+import copy
 from random import randint
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QIntValidator
@@ -18,6 +19,7 @@ class SimulationConfigEditorDock(QDockWidget):
         self.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
         self.setFeatures(QDockWidget.DockWidgetMovable | QDockWidget.DockWidgetClosable)
         self.setFloating(False)
+        self.hasRunBefore = False
 
         # MAIN SIMULATION PARAMETERS
         self.simulationTab = QWidget()
@@ -161,7 +163,7 @@ class SimulationConfigEditorDock(QDockWidget):
     def _onUIChanged(self):
         self.uiParameters.name = self.nameEdit.text()
         self.uiParameters.distributionType = self.distributionTypeCombo.currentText().upper()
-        self.uiParameters.seed = int(self.seedEdit.currentText())
+        self.uiParameters.seed = int(self.seedEdit.text())
         self.uiParameters.calculatorType = self.calculatorTypeCombo.currentText().replace("-", "_").upper()
         self.uiParameters.integratorType = self.integratorTypeCombo.currentText()
         self.uiParameters.device = self.deviceCombo.currentText()
@@ -184,14 +186,14 @@ class SimulationConfigEditorDock(QDockWidget):
 
     def _launchSimulation(self):
         self._onUIChanged()
-        self.activeParameters = self.uiParameters
+        self.activeParameters = copy.deepcopy(self.uiParameters)
         self.hasRunBefore = True
         self.launchSimulationPressed.emit(self.activeParameters)
         self._updateButtonStates()
 
     def _resetSimulation(self):
         if self.hasRunBefore:
-            self.resetSimulationPressed.emit(self.activeParameters)
+            self.resetSimulationPressed.emit(copy.deepcopy(self.activeParameters))
 
     def _randomizeSeed(self):
         seed = randint(0, 2 ** 31 - 1)
@@ -208,10 +210,6 @@ class SimulationConfigEditorDock(QDockWidget):
 
     def getParameters(self):
         return self.activeParameters
-
-    def notifySimulationStarted(self):
-        self.hasRunBefore = True
-        self._updateButtonStates()
 
 
 class BasicDistributionWidget(QWidget):

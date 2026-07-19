@@ -13,21 +13,11 @@ class NBodySimulator(QObject):
     def __init__(self, parameters: SimulatorParameters):
         super().__init__()
         self.parameters = parameters
-        self.timeStep = parameters.timeStep
-        self.gravitationalConstant = parameters.gravitationalConstant
-        self.calculator = self._createCalculator(parameters)
-        self.integrator = self._createIntegrator(parameters)
-        self.particles = self._createDistribution(parameters)
+        self._recreateComponents()
         self.particles = None
         self.time = 0.0
         self.isRunning = False
         self._stopRequested = False
-
-    def setParameters(self, parameters: SimulatorParameters):
-        self.parameters = parameters
-        self._recreateComponents()
-        self.particles = None
-        self.time = 0.0
 
     def _recreateComponents(self):
         self.timeStep = self.parameters.timeStep
@@ -35,6 +25,12 @@ class NBodySimulator(QObject):
         self.calculator = self._createCalculator(self.parameters)
         self.integrator = self._createIntegrator(self.parameters)
         self.particles = self._createDistribution(self.parameters)
+
+    def setParameters(self, parameters: SimulatorParameters):
+        self.parameters = parameters
+        self._recreateComponents()
+        self.particles = None
+        self.time = 0.0
 
     @staticmethod
     def _createIntegrator(parameters: SimulatorParameters):
@@ -61,40 +57,40 @@ class NBodySimulator(QObject):
         except KeyError:
             raise ValueError(f"Unknown distribution type: {distributionType}")
 
-    @pyqtSlot()
-    def run(self):
-        print('NBodySimulator: run() started on thread', QThread.currentThread())
-        if QThread.currentThread() != self.thread():
-            print("WARNING: run() is NOT running on worker thread!")
-        else:
-            print("OK: Running on worker thread")
+    @pyqtSlot(SimulatorParameters)
+    def prepareAndRun(self, parameters: SimulatorParameters):
+        print('NBodySimulator: prepareAndRun on thread', QThread.currentThread())
+        self.parameters = parameters
+        self._recreateComponents()
         self.isRunning = True
         self._stopRequested = False
+        self._runLoop()
+
+    @pyqtSlot()
+    def _runLoop(self):
+        print('NBodySimulator: _runLoop() started on thread', QThread.currentThread())
+        stepCount = 0
         try:
-            if self.particles is None:
-                self.particles = self._createDistribution(self.parameters)
-            stepCount = 0
             while self.isRunning and not self._stopRequested:
-                self.particles = self.integrator.step(self.particles, self.calculator)
-                self.time += self.timeStep
-                groups = {"main": self.particles}
-                self.positionsReady.emit(groups)
+                self.step()
+                groups = {"main": self.particles.positions}
+                if groups["main"] is not None:
+                    self.positionsReady.emit(groups)
                 stepCount += 1
+                QThread.msleep(1)
         except Exception as e:
             print("Simulation error:", e)
         finally:
             self.isRunning = False
             self.simulationFinished.emit()
-            print('NBodySimulator: run() finished')
+            print(f'NBodySimulator: _runLoop finished after {stepCount} steps')
 
     @pyqtSlot()
     def stop(self):
+        print("NBodySimulator: stop() called")
         self._stopRequested = True
         self.isRunning = False
 
     def step(self):
-        if self.positions is None:
-            self.initialize()
-        self.particles = self.integrator.step(self.positions, self.velocities, self.masses, self.calculator)
+        self.particles = self.integrator.step(self.particles, self.calculator)
         self.time += self.timeStep
-        return self.positions, self.velocities
