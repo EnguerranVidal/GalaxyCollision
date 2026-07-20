@@ -13,13 +13,13 @@ class NBodySimulator(QObject):
     def __init__(self, parameters: SimulatorParameters):
         super().__init__()
         self.parameters = parameters
-        self._recreateComponents()
+        self._initializeComponents()
         self.particles = None
         self.time = 0.0
         self.isRunning = False
         self._stopRequested = False
 
-    def _recreateComponents(self):
+    def _initializeComponents(self):
         self.timeStep = self.parameters.timeStep
         self.gravitationalConstant = self.parameters.gravitationalConstant
         self.calculator = self._createCalculator(self.parameters)
@@ -28,7 +28,7 @@ class NBodySimulator(QObject):
 
     def setParameters(self, parameters: SimulatorParameters):
         self.parameters = parameters
-        self._recreateComponents()
+        self._initializeComponents()
         self.particles = None
         self.time = 0.0
 
@@ -61,7 +61,7 @@ class NBodySimulator(QObject):
     def prepareAndRun(self, parameters: SimulatorParameters):
         print('NBodySimulator: prepareAndRun on thread', QThread.currentThread())
         self.parameters = parameters
-        self._recreateComponents()
+        self._initializeComponents()
         self.isRunning = True
         self._stopRequested = False
         self._runLoop()
