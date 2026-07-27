@@ -1,7 +1,7 @@
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
-from core.engine.parameters import SimulatorParameters
+from src.core.engine.parameters import SimulatorParameters
 
 
 @dataclass

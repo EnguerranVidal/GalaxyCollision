@@ -13,8 +13,8 @@ class SimulationConfigEditorDock(QDockWidget):
 
     def __init__(self, initialParameters: SimulatorParameters = None, parent=None):
         super().__init__("Simulation Configuration", parent)
-        self.activeParameters = initialParameters or SimulatorParameters()
-        self.uiParameters = self.activeParameters
+        self.activeParameters = copy.deepcopy(initialParameters or SimulatorParameters())
+        self.uiParameters = copy.deepcopy(self.activeParameters)
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
         self.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
         self.setFeatures(QDockWidget.DockWidgetMovable | QDockWidget.DockWidgetClosable)
@@ -24,28 +24,34 @@ class SimulationConfigEditorDock(QDockWidget):
         # MAIN SIMULATION PARAMETERS
         self.simulationTab = QWidget()
         self.nameEdit = QLineEdit("My N-Body Simulation")
+        self.nameEdit.textChanged.connect(self._onUIChanged)
         self.saveResultsCheck = QCheckBox("Save Results to Disk")
+        self.saveResultsCheck.stateChanged.connect(self._onUIChanged)
         simulationInfoGroup = QGroupBox("Simulation Information")
         simulationInfoForm = QFormLayout(simulationInfoGroup)
         simulationInfoForm.addRow("Name:", self.nameEdit)
         simulationInfoForm.addRow("", self.saveResultsCheck)
         self.distributionTypeCombo = QComboBox()
-        self.distributionTypeCombo.addItems(["Galaxy", "Basic"])
-        self.distributionTypeCombo.currentTextChanged.connect(self._onDistributionTypeChanged)
+        self.distributionTypeCombo.addItem('Galaxy', userData='GALAXY')
+        self.distributionTypeCombo.addItem('Basic Random', userData='BASIC')
+        self.distributionTypeCombo.currentIndexChanged.connect(self._onDistributionTypeChanged)
         self.seedEdit = QLineEdit()
         self.seedEdit.setValidator(QIntValidator(0, 2 ** 31 - 1))
         self.seedEdit.editingFinished.connect(self._onUIChanged)
         self.randomSeedButton = QPushButton("Randomize")
         self.randomSeedButton.clicked.connect(self._randomizeSeed)
         self.calculatorTypeCombo = QComboBox()
-        self.calculatorTypeCombo.addItems(["Barnes-Hut", "Newton"])
-        self.calculatorTypeCombo.currentTextChanged.connect(self._onUIChanged)
+        self.calculatorTypeCombo.addItem('Newton', userData='NEWTON')
+        self.calculatorTypeCombo.addItem('Barnes-Hut', userData='BARNES_HUT')
+        self.calculatorTypeCombo.currentIndexChanged.connect(self._onUIChanged)
         self.integratorTypeCombo = QComboBox()
-        self.integratorTypeCombo.addItems(["RK4", "EulerExplicit"])
-        self.integratorTypeCombo.currentTextChanged.connect(self._onUIChanged)
+        self.integratorTypeCombo.addItem('RK4', userData='RK4')
+        self.integratorTypeCombo.addItem('Euler Explicit', userData='EULER_EXPLICIT')
+        self.integratorTypeCombo.currentIndexChanged.connect(self._onUIChanged)
         self.deviceCombo = QComboBox()
-        self.deviceCombo.addItems(["GPU", "CPU"])
-        self.deviceCombo.currentTextChanged.connect(self._onUIChanged)
+        self.deviceCombo.addItem('GPU (CUDA)', userData='GPU')
+        self.deviceCombo.addItem('CPU', userData='CPU')
+        self.deviceCombo.currentIndexChanged.connect(self._onUIChanged)
         self.gravitationalConstantSpin = QDoubleSpinBox()
         self.gravitationalConstantSpin.setRange(0.01, 100.0)
         self.gravitationalConstantSpin.setDecimals(4)
@@ -115,7 +121,7 @@ class SimulationConfigEditorDock(QDockWidget):
         self._updateButtonStates()
 
     def _initializeUi(self):
-        parameters = self.activeParameters
+        parameters = copy.deepcopy(self.activeParameters)
         self.nameEdit.blockSignals(True)
         self.distributionTypeCombo.blockSignals(True)
         self.seedEdit.blockSignals(True)
@@ -131,10 +137,10 @@ class SimulationConfigEditorDock(QDockWidget):
         try:
             self.nameEdit.setText(parameters.name)
             self.seedEdit.setText(str(randint(0, 2 ** 31 - 1)) if parameters.seed is None else str(parameters.seed))
-            self.distributionTypeCombo.setCurrentText(parameters.distributionType.title())
-            self.calculatorTypeCombo.setCurrentText(parameters.calculatorType.replace("_", "-"))
-            self.integratorTypeCombo.setCurrentText(parameters.integratorType)
-            self.deviceCombo.setCurrentText(parameters.device)
+            self._setComboData(self.distributionTypeCombo, parameters.distributionType)
+            self._setComboData(self.calculatorTypeCombo, parameters.calculatorType)
+            self._setComboData(self.integratorTypeCombo, parameters.integratorType)
+            self._setComboData(self.deviceCombo, parameters.device)
             self.gravitationalConstantSpin.setValue(parameters.gravitationalConstant)
             self.timeStepSpin.setValue(parameters.timeStep)
             self.thetaValueSpin.setValue(parameters.theta)
@@ -145,7 +151,7 @@ class SimulationConfigEditorDock(QDockWidget):
             self.distributionEditor.setCurrentIndex(idx)
             self.galaxyWidget.syncUIFromParameters(parameters.galaxyDistributionParameters)
             self.basicWidget.syncUIFromParameters(parameters.basicDistributionParameters)
-            self.uiParameters = parameters
+            self.uiParameters = copy.deepcopy(parameters)
         finally:
             self.nameEdit.blockSignals(False)
             self.distributionTypeCombo.blockSignals(False)
@@ -162,11 +168,12 @@ class SimulationConfigEditorDock(QDockWidget):
 
     def _onUIChanged(self):
         self.uiParameters.name = self.nameEdit.text()
-        self.uiParameters.distributionType = self.distributionTypeCombo.currentText().upper()
-        self.uiParameters.seed = int(self.seedEdit.text())
-        self.uiParameters.calculatorType = self.calculatorTypeCombo.currentText().replace("-", "_").upper()
-        self.uiParameters.integratorType = self.integratorTypeCombo.currentText()
-        self.uiParameters.device = self.deviceCombo.currentText()
+        self.uiParameters.distributionType = self.distributionTypeCombo.currentData()
+        seedText = self.seedEdit.text().strip()
+        self.uiParameters.seed = int(seedText) if seedText else None
+        self.uiParameters.calculatorType = self.calculatorTypeCombo.currentData()
+        self.uiParameters.integratorType = self.integratorTypeCombo.currentData()
+        self.uiParameters.device = self.deviceCombo.currentData()
         self.uiParameters.gravitationalConstant = self.gravitationalConstantSpin.value()
         self.uiParameters.timeStep = self.timeStepSpin.value()
         self.uiParameters.theta = self.thetaValueSpin.value()
@@ -188,7 +195,7 @@ class SimulationConfigEditorDock(QDockWidget):
         self._onUIChanged()
         self.activeParameters = copy.deepcopy(self.uiParameters)
         self.hasRunBefore = True
-        self.launchSimulationPressed.emit(self.activeParameters)
+        self.launchSimulationPressed.emit(copy.deepcopy(self.activeParameters))
         self._updateButtonStates()
 
     def _resetSimulation(self):
@@ -206,10 +213,16 @@ class SimulationConfigEditorDock(QDockWidget):
         self._onUIChanged()
 
     def getUiParameters(self):
-        return self.uiParameters
+        return copy.deepcopy(self.uiParameters)
 
     def getParameters(self):
-        return self.activeParameters
+        return copy.deepcopy(self.activeParameters)
+
+    @staticmethod
+    def _setComboData(combo: QComboBox, value):
+        index = combo.findData(value)
+        if index != -1:
+            combo.setCurrentIndex(index)
 
 
 class BasicDistributionWidget(QWidget):

@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 
@@ -66,12 +66,12 @@ class SimulatorParameters:
     gravitationalConstant: float = 1.0
     integratorType: str = "RK4"
     distributionType: str = "GALAXY"
-    calculatorType: str = "BARNES-HUT"
+    calculatorType: str = "BARNES_HUT"
     endless: bool = True
     maxTime: float = 1000.0
     saveResults: bool = False
-    basicDistributionParameters: Optional[BasicDistributionParameters] = BasicDistributionParameters()
-    galaxyDistributionParameters: Optional[GalaxyDistributionParameters] = GalaxyDistributionParameters()
+    basicDistributionParameters: Optional[BasicDistributionParameters] = field(default_factory=BasicDistributionParameters)
+    galaxyDistributionParameters: Optional[GalaxyDistributionParameters] = field(default_factory=GalaxyDistributionParameters)
 
     def __eq__(self, other):
         if not isinstance(other, SimulatorParameters):

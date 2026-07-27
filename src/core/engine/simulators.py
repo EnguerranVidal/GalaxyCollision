@@ -1,3 +1,5 @@
+import time
+
 from PyQt5.QtCore import QThread, pyqtSignal, QObject, pyqtSlot
 
 from src.core.engine.integrators import EulerExplicit, RK4
@@ -12,9 +14,9 @@ class NBodySimulator(QObject):
 
     def __init__(self, parameters: SimulatorParameters):
         super().__init__()
+        self.particles = None
         self.parameters = parameters
         self._initializeComponents()
-        self.particles = None
         self.time = 0.0
         self.isRunning = False
         self._stopRequested = False
@@ -29,12 +31,11 @@ class NBodySimulator(QObject):
     def setParameters(self, parameters: SimulatorParameters):
         self.parameters = parameters
         self._initializeComponents()
-        self.particles = None
         self.time = 0.0
 
     @staticmethod
     def _createIntegrator(parameters: SimulatorParameters):
-        integratorType = parameters.integratorType.upper()
+        integratorType = parameters.integratorType.upper().replace("_", "").replace("-", "")
         if integratorType == "EULER_EXPLICIT":
             return EulerExplicit(parameters.timeStep)
         else:
@@ -42,8 +43,8 @@ class NBodySimulator(QObject):
 
     @staticmethod
     def _createCalculator(parameters: SimulatorParameters):
-        calculatorType = parameters.calculatorType.upper()
-        if calculatorType == "NEWTON":
+        calculatorType = parameters.calculatorType.upper().replace("_", "").replace("-", "")
+        if calculatorType in ("NEWTON", "BARNES_HUT"):
             return NewtonCalculator(gravitationalConstant=parameters.gravitationalConstant)
         else:
             return NewtonCalculator(gravitationalConstant=parameters.gravitationalConstant)
@@ -70,14 +71,20 @@ class NBodySimulator(QObject):
     def _runLoop(self):
         print('NBodySimulator: _runLoop() started on thread', QThread.currentThread())
         stepCount = 0
+        lastEmitTime = 0.0
+        minimumEmitInterval = 1.0 / 60.0
         try:
             while self.isRunning and not self._stopRequested:
                 self.step()
-                groups = {"main": self.particles.positions}
-                if groups["main"] is not None:
-                    self.positionsReady.emit(groups)
+                now = time.perf_counter()
+                if now - lastEmitTime >= minimumEmitInterval:
+                    groups = {"main": self._positionsForDisplay()}
+                    if groups["main"] is not None:
+                        self.positionsReady.emit(groups)
+                    lastEmitTime = now
                 stepCount += 1
-                QThread.msleep(1)
+                if not self.parameters.endless and self.time >= self.parameters.maxTime:
+                    break
         except Exception as e:
             print("Simulation error:", e)
         finally:
@@ -94,3 +101,9 @@ class NBodySimulator(QObject):
     def step(self):
         self.particles = self.integrator.step(self.particles, self.calculator)
         self.time += self.timeStep
+
+    def _positionsForDisplay(self):
+        positions = self.particles.positions
+        if self.particles.device == "gpu":
+            return positions.get()
+        return positions

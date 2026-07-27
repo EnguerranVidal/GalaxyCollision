@@ -1,33 +1,55 @@
-import time
-import sys
+import argparse
 import os
+import sys
+import time
 from random import randint
 
-from src.core.engine.simulators import NBodySimulator
+projectRoot = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+if projectRoot not in sys.path:
+    sys.path.insert(0, projectRoot)
+
 from src.core.engine.parameters import SimulatorParameters
+from src.core.engine.simulators import NBodySimulator
 
 
-def runBenchmark(device: str, nbParticles: int = 5000, nbSteps: int = 800):
+def synchronizeDevice(particles):
+    if particles.device != "gpu":
+        return
+    import cupy as cp
+    cp.cuda.Stream.null.synchronize()
+
+
+def runBenchmark(device: str, nbParticles: int = 5000, nbSteps: int = 200, integratorType: str = "EulerExplicit"):
     print(f"\n{'=' * 60}")
-    print(f"RUNNING BENCHMARK: {device} | {nbParticles:,} particles | {nbSteps} steps")
+    print(f"RUNNING BENCHMARK: {device} | {nbParticles:,} particles | {nbSteps} steps | {integratorType}")
     print(f"{'=' * 60}")
+
     parameters = SimulatorParameters()
     parameters.device = device
     parameters.distributionType = "BASIC"
     parameters.basicDistributionParameters.nbParticles = nbParticles
+    parameters.integratorType = integratorType
+    parameters.calculatorType = "NEWTON"
     parameters.seed = randint(0, 2 ** 31 - 1)
     parameters.timeStep = 0.01
     parameters.gravitationalConstant = 1.0
-    simulator = NBodySimulator(parameters)
-    simulator.setParameters(parameters)
+
     times = []
-    startTotal = time.perf_counter()
     print(f"Starting simulation on {device}...")
     try:
-        print(simulator.particles)
+        simulator = NBodySimulator(parameters)
+        if simulator.particles is None:
+            raise RuntimeError("Simulator did not initialize particles")
+
+        for _ in range(2):
+            simulator.step()
+        synchronizeDevice(simulator.particles)
+
+        startTotal = time.perf_counter()
         for step in range(nbSteps):
             stepStartTime = time.perf_counter()
             simulator.step()
+            synchronizeDevice(simulator.particles)
             stepTimeDuration = (time.perf_counter() - stepStartTime) * 1000
             times.append(stepTimeDuration)
             if step % 100 == 0 and step > 0:
@@ -35,9 +57,19 @@ def runBenchmark(device: str, nbParticles: int = 5000, nbSteps: int = 800):
     except Exception as e:
         print(f"Error during benchmark: {e}")
         return None
+
     totalTimeDuration = time.perf_counter() - startTotal
     averageTime = sum(times) / len(times)
-    result = {"device": device, "particles": nbParticles, "steps": nbSteps, "avg_ms_per_step": round(averageTime, 3), "total_seconds": round(totalTimeDuration, 2), "estimated_fps": round(1000 / averageTime, 1), "min_ms": round(min(times), 3), "max_ms": round(max(times), 3)}
+    result = {
+        "device": device,
+        "particles": nbParticles,
+        "steps": nbSteps,
+        "avg_ms_per_step": round(averageTime, 3),
+        "total_seconds": round(totalTimeDuration, 2),
+        "estimated_fps": round(1000 / averageTime, 1),
+        "min_ms": round(min(times), 3),
+        "max_ms": round(max(times), 3),
+    }
     print(f"\nRESULTS for {device}:")
     print(f"   Average time per step : {result['avg_ms_per_step']:6.3f} ms")
     print(f"   Estimated FPS         : {result['estimated_fps']:6.1f}")
@@ -47,23 +79,28 @@ def runBenchmark(device: str, nbParticles: int = 5000, nbSteps: int = 800):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Benchmark the Galaxy Collision N-body engine.")
+    parser.add_argument("--particles", nargs="+", type=int, default=[1000, 5000], help="Particle counts to benchmark.")
+    parser.add_argument("--steps", type=int, default=200, help="Timed simulation steps per run.")
+    parser.add_argument("--devices", nargs="+", choices=["CPU", "GPU", "cpu", "gpu"], default=["CPU", "GPU"], help="Devices to benchmark.")
+    parser.add_argument("--integrator", choices=["EulerExplicit", "RK4"], default="EulerExplicit", help="Integrator used during the benchmark.")
+    args = parser.parse_args()
+
     print("N-Body Simulation Benchmark")
     print("===========================")
-    nbParticlesList = [1000, 5000, 10000]
-    steps = 600
     results = []
-    for nbParticles in nbParticlesList:
-        cpuResult = runBenchmark("CPU", nbParticles, steps)
-        if cpuResult:
-            results.append(cpuResult)
-        time.sleep(1)
-        gpuResult = runBenchmark("GPU", nbParticles, steps)
-        if gpuResult:
-            results.append(gpuResult)
-        time.sleep(2)
+    for nbParticles in args.particles:
+        for device in args.devices:
+            result = runBenchmark(device.upper(), nbParticles, args.steps, args.integrator)
+            if result:
+                results.append(result)
+            time.sleep(1)
+
     print("\n" + "=" * 80)
     print("SUMMARY")
     print("=" * 80)
-    for r in results:
+    for result in results:
         print(
-            f"{r['device']:4} | {r['particles']:6,} particles → {r['avg_ms_per_step']:6.3f} ms/step | ~{r['estimated_fps']:5.1f} FPS")
+            f"{result['device']:4} | {result['particles']:6,} particles -> "
+            f"{result['avg_ms_per_step']:6.3f} ms/step | ~{result['estimated_fps']:5.1f} FPS"
+        )

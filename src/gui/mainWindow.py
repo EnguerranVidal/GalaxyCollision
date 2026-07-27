@@ -7,7 +7,7 @@ from PyQt5.QtCore import QUrl, QTimer, Qt, QThread, Q_ARG, QMetaObject, pyqtSlot
 from PyQt5.QtGui import QIcon, QDesktopServices
 from PyQt5.QtWidgets import *
 
-from core.engine.simulators import NBodySimulator
+from src.core.engine.simulators import NBodySimulator
 from src.core.engine.parameters import SimulatorParameters
 from src.gui.configEditor import SimulationConfigEditorDock
 from src.gui.visualizers.view3d import Universe3dViewWidget
@@ -91,7 +91,7 @@ class MainWindow(QMainWindow):
         self._restartSimulation(self.activeParameters)
 
     def _restartSimulation(self, parameters: SimulatorParameters):
-        QMetaObject.invokeMethod(self.nBodySimulator, "stop", Qt.QueuedConnection)
+        self.nBodySimulator.stop()
         QTimer.singleShot(30, lambda: self._startNewSimulation(parameters))
 
     def _startNewSimulation(self, parameters: SimulatorParameters):

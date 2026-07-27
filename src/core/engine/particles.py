@@ -8,11 +8,20 @@ except ImportError:
     cp = None
 
 
+def normalizeDevice(device):
+    deviceName = str(device or "cpu").lower()
+    if deviceName not in ("cpu", "gpu"):
+        raise ValueError(f"Unknown device: {device}")
+    if deviceName == "gpu" and not HAS_CUPY:
+        raise RuntimeError("GPU device requested but CuPy is not installed")
+    return deviceName
+
+
 class ParticleGroup:
         def __init__(self, nbParticles, device='cpu'):
-            xp = cp if device == 'gpu' else np
+            self.device = normalizeDevice(device)
+            xp = cp if self.device == 'gpu' else np
             self.nbParticles = nbParticles
-            self.device = device
             self.positions = xp.zeros((self.nbParticles, 3), dtype=xp.float32)
             self.velocities = xp.zeros((self.nbParticles, 3), dtype=xp.float32)
             self.accelerations = xp.zeros((self.nbParticles, 3), dtype=xp.float32)
@@ -53,7 +62,7 @@ class ParticleGroup:
         def groupToCpu(self):
             if self.device == 'cpu':
                 return self
-            particleGroup = ParticleGroup(self.nbParticles, device='cpu', dimension=self.dimension)
+            particleGroup = ParticleGroup(self.nbParticles, device='cpu')
             particleGroup.positions = self.positions.get()
             particleGroup.velocities = self.velocities.get()
             particleGroup.accelerations = self.accelerations.get()
@@ -63,7 +72,7 @@ class ParticleGroup:
         def groupToGpu(self):
             if self.device == 'gpu':
                 return self
-            particleGroup = ParticleGroup(self.nbParticles, device='gpu', dimension=self.dimension)
+            particleGroup = ParticleGroup(self.nbParticles, device='gpu')
             particleGroup.positions = cp.array(self.positions, dtype=cp.float32)
             particleGroup.velocities = cp.array(self.velocities, dtype=cp.float32)
             particleGroup.accelerations = cp.array(self.accelerations, dtype=cp.float32)
