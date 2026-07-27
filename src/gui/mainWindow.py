@@ -84,6 +84,8 @@ class MainWindow(QMainWindow):
     @pyqtSlot(SimulatorParameters)
     def _onLaunchSimulation(self, parameters: SimulatorParameters):
         self.activeParameters = parameters
+        self.settings.parameters = parameters
+        self.saveSettings()
         self._restartSimulation(parameters)
 
     @pyqtSlot()
@@ -184,6 +186,7 @@ class MainWindow(QMainWindow):
             self.nBodySimulator.simulationFinished.disconnect(connection)
             if not finished:
                 print("Warning: Simulator did not stop gracefully within timeout")
+        self.settings.parameters = self.configEditorDock.getUiParameters()
         self.settings.window.maximized = self.isMaximized()
         if not self.isMaximized():
             g = self.geometry()

@@ -42,7 +42,8 @@ class UiSettings:
     @classmethod
     def fromDict(cls, data: dict | None):
         data = data or {}
-        return cls(window=WindowSettings.fromDict(data.get("WINDOW")))
+        return cls(window=WindowSettings.fromDict(data.get("WINDOW")),
+                   parameters=SimulatorParameters.fromDict(data.get("PARAMETERS")))
 
     def toDict(self):
-        return {"WINDOW": self.window.toDict()}
+        return {"WINDOW": self.window.toDict(), "PARAMETERS": self.parameters.toDict()}

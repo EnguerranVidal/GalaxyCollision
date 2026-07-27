@@ -10,6 +10,19 @@ class BasicDistributionParameters:
     massMinimum: float = 0.1
     massMaximum: float = 1.0
 
+    @classmethod
+    def fromDict(cls, data: dict):
+        return cls(**data)
+
+    def toDict(self):
+        return {
+            "nbParticles": self.nbParticles,
+            "positionScale": self.positionScale,
+            "velocityScale": self.velocityScale,
+            "massMinimum": self.massMinimum,
+            "massMaximum": self.massMaximum,
+        }
+
     def __eq__(self, other) -> bool:
         if not isinstance(other, BasicDistributionParameters):
             return NotImplemented
@@ -29,13 +42,30 @@ class BasicDistributionParameters:
 class GalaxyDistributionParameters:
     nbParticles: int = 5000
     totalMass: float = 1000.0
-    radius: float = 10.0
+    radius: float = 15.0
     height: float = 2.0
     bulgeFraction: float = 0.2
-    haloFraction: float = 0.5
+    haloFraction: float = 0.2
     velocityDispersion: float = 0.1
     plummerRadius: float = 3.0
-    haloRadius: float = 50.0
+    haloRadius: float = 5.0
+
+    @classmethod
+    def fromDict(cls, data: dict):
+        return cls(**data)
+
+    def toDict(self):
+        return {
+            "nbParticles": self.nbParticles,
+            "totalMass": self.totalMass,
+            "radius": self.radius,
+            "height": self.height,
+            "bulgeFraction": self.bulgeFraction,
+            "haloFraction": self.haloFraction,
+            "velocityDispersion": self.velocityDispersion,
+            "plummerRadius": self.plummerRadius,
+            "haloRadius": self.haloRadius,
+        }
 
     def __eq__(self, other) -> bool:
         if not isinstance(other, GalaxyDistributionParameters):
@@ -72,6 +102,37 @@ class SimulatorParameters:
     saveResults: bool = False
     basicDistributionParameters: Optional[BasicDistributionParameters] = field(default_factory=BasicDistributionParameters)
     galaxyDistributionParameters: Optional[GalaxyDistributionParameters] = field(default_factory=GalaxyDistributionParameters)
+
+    @classmethod
+    def fromDict(cls, data: dict):
+        if data is None:
+            return cls()
+        data = dict(data)
+        basic = data.get("basicDistributionParameters")
+        if basic is not None:
+            data["basicDistributionParameters"] = basic if isinstance(basic, BasicDistributionParameters) else BasicDistributionParameters.fromDict(basic)
+        galaxy = data.get("galaxyDistributionParameters")
+        if galaxy is not None:
+            data["galaxyDistributionParameters"] = galaxy if isinstance(galaxy, GalaxyDistributionParameters) else GalaxyDistributionParameters.fromDict(galaxy)
+        return cls(**data)
+
+    def toDict(self):
+        return {
+            "name": self.name,
+            "timeStep": self.timeStep,
+            "theta": self.theta,
+            "seed": self.seed,
+            "device": self.device,
+            "gravitationalConstant": self.gravitationalConstant,
+            "integratorType": self.integratorType,
+            "distributionType": self.distributionType,
+            "calculatorType": self.calculatorType,
+            "endless": self.endless,
+            "maxTime": self.maxTime,
+            "saveResults": self.saveResults,
+            "basicDistributionParameters": self.basicDistributionParameters.toDict() if self.basicDistributionParameters is not None else None,
+            "galaxyDistributionParameters": self.galaxyDistributionParameters.toDict() if self.galaxyDistributionParameters is not None else None,
+        }
 
     def __eq__(self, other):
         if not isinstance(other, SimulatorParameters):
