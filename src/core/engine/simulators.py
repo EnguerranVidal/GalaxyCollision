@@ -3,7 +3,7 @@ import time
 from PyQt5.QtCore import QThread, pyqtSignal, QObject, pyqtSlot
 
 from src.core.engine.integrators import EulerExplicit, RK4
-from src.core.engine.calculators import NewtonCalculator
+from src.core.engine.calculators import NewtonCalculator, BarnesHutCalculator
 from src.core.engine.distributions import Distribution, GalaxyDistribution
 from src.core.engine.parameters import SimulatorParameters
 
@@ -44,8 +44,10 @@ class NBodySimulator(QObject):
     @staticmethod
     def _createCalculator(parameters: SimulatorParameters):
         calculatorType = parameters.calculatorType.upper().replace("_", "").replace("-", "")
-        if calculatorType in ("NEWTON", "BARNES_HUT"):
+        if calculatorType == 'NEWTON':
             return NewtonCalculator(gravitationalConstant=parameters.gravitationalConstant)
+        elif calculatorType == 'BARNES_HUT':
+            return BarnesHutCalculator(gravitationalConstant=parameters.gravitationalConstant)
         else:
             return NewtonCalculator(gravitationalConstant=parameters.gravitationalConstant)
 

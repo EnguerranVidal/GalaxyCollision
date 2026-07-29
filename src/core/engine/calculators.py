@@ -2,6 +2,7 @@ import numpy as np
 from abc import ABC, abstractmethod
 
 from src.core.engine.particles import ParticleGroup
+from src.core.engine.kernels import massKernel, forceKernel
 
 try:
     import cupy as cp
@@ -78,15 +79,16 @@ class BarnesHutTree:
         self.xp = xp
         self.maxNodes = 4 * particles.nbParticles
         self.nodeCount = 1
-        self.nodeCenter = xp.zeros((self.maxNodes, 3), dtype=xp.float32)
-        self.nodeHalfSize = xp.zeros(self.maxNodes, dtype=xp.float32)
-        self.nodeChildren = xp.full((self.maxNodes, 8), -1, dtype=xp.int32)
+        self.nodeCenter = self.xp.zeros((self.maxNodes, 3), dtype=self.xp.float32)
+        self.nodeHalfSize = self.xp.zeros(self.maxNodes, dtype=self.xp.float32)
+        self.nodeChildren = self.xp.full((self.maxNodes, 8), -1, dtype=self.xp.int32)
         self.nodeParent = self.xp.full(self.maxNodes, self.EMPTY, dtype=self.xp.int32)
         self.nodeDepth = self.xp.zeros(self.maxNodes, dtype=self.xp.int16)
-        self.nodeParticle = xp.full(self.maxNodes, -1, dtype=xp.int32)
-        self.nodeMass = xp.zeros(self.maxNodes, dtype=xp.float32)
-        self.nodeCenterOfMass = xp.zeros((self.maxNodes, 3), dtype=xp.float32)
-        self.nodeIsLeaf = xp.ones(self.maxNodes, dtype=bool)
+        self.nodeChildCount = self.xp.zeros(self.maxNodes, dtype=self.xp.uint8)
+        self.nodeParticle = self.xp.full(self.maxNodes, -1, dtype=self.xp.int32)
+        self.nodeMass = self.xp.zeros(self.maxNodes, dtype=self.xp.float32)
+        self.nodeCenterOfMass = self.xp.zeros((self.maxNodes, 3), dtype=self.xp.float32)
+        self.nodeIsLeaf = self.xp.ones(self.maxNodes, dtype=bool)
         self.build()
 
     @property
@@ -149,6 +151,7 @@ class BarnesHutTree:
         self.nodeChildren[parent, octant] = child
         self.nodeParent[child] = parent
         self.nodeDepth[child] = self.nodeDepth[parent] + 1
+        self.nodeChildCount[parent] += 1
         center, half = self._childCenter(parent, octant)
         self.nodeCenter[child] = center
         self.nodeHalfSize[child] = half
@@ -174,6 +177,12 @@ class BarnesHutTree:
             current = self._createChild(current, octant)
 
     def computeMassCenters(self):
+        if self.particles.device == "gpu":
+            self._computeMassCentersGpu()
+        else:
+            self._computeMassCentersCpu()
+
+    def _computeMassCentersCpu(self):
         self.nodeMass[:self.nodeCount] = 0
         self.nodeCenterOfMass[:self.nodeCount] = 0
         for node in range(self.nodeCount):
@@ -195,7 +204,19 @@ class BarnesHutTree:
                     self.nodeMass[node] = totalMass
                     self.nodeCenterOfMass[node] = center / totalMass
 
-    def computeAccelerations(self, gravitationalConstant=1.0, theta=0.5, softening=1e-3):
+    def _computeMassCentersGpu(self):
+        self.nodeMass.fill(0)
+        self.nodeCenterOfMass.fill(0)
+        maxDepth = int(cp.max(self.nodeDepth[:self.nodeCount]).get())
+        for depth in range(maxDepth, -1, -1):
+            massKernel(..., np.int32(depth), np.int32(self.nodeCount), block=(256,), grid=((self.nodeCount + 255) // 256,))
+
+    def computeAccelerations(self, gravitationalConstant, theta, softening):
+        if self.particles.device == "gpu":
+            return self._computeAccelerationsGpu(gravitationalConstant, theta, softening)
+        return self._computeAccelerationsCpu(gravitationalConstant, theta, softening)
+
+    def _computeAccelerationsCpu(self, gravitationalConstant=1.0, theta=0.5, softening=1e-3):
         accelerations = self.xp.zeros_like(self.positions)
         softeningSquared = softening * softening
         for particleIndex in range(self.nbParticles):
@@ -220,4 +241,11 @@ class BarnesHutTree:
                         if child != self.EMPTY:
                             stack.append(int(child))
             accelerations[particleIndex] = acceleration
+        return accelerations
+
+    def _computeAccelerationsGpu(self, gravitationalConstant=1.0, theta=0.5, softening=1e-3):
+        accelerations = cp.zeros_like(self.positions)
+        threads = 256
+        blocks = (self.nbParticles + threads - 1) // threads
+        self._forceKernel(self.positions, self.nodeCenterOfMass, self.nodeMass, self.nodeHalfSize, self.nodeChildren, self.nodeParticle, self.nodeIsLeaf, np.int32(self.nodeCount), np.float32(gravitationalConstant), np.float32(theta), np.float32(softening), accelerations, block=(threads,), grid=(blocks,))
         return accelerations

@@ -19,7 +19,7 @@ def synchronizeDevice(particles):
     cp.cuda.Stream.null.synchronize()
 
 
-def runBenchmark(device: str, nbParticles: int = 5000, nbSteps: int = 200, integratorType: str = "EulerExplicit"):
+def runBenchmark(device: str, nbParticles: int = 2000, nbSteps: int = 200, integratorType: str = "EulerExplicit"):
     print(f"\n{'=' * 60}")
     print(f"RUNNING BENCHMARK: {device} | {nbParticles:,} particles | {nbSteps} steps | {integratorType}")
     print(f"{'=' * 60}")
@@ -80,7 +80,7 @@ def runBenchmark(device: str, nbParticles: int = 5000, nbSteps: int = 200, integ
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Benchmark the Galaxy Collision N-body engine.")
-    parser.add_argument("--particles", nargs="+", type=int, default=[1000, 5000], help="Particle counts to benchmark.")
+    parser.add_argument("--particles", nargs="+", type=int, default=[500, 1000, 2000, 5000], help="Particle counts to benchmark.")
     parser.add_argument("--steps", type=int, default=200, help="Timed simulation steps per run.")
     parser.add_argument("--devices", nargs="+", choices=["CPU", "GPU", "cpu", "gpu"], default=["CPU", "GPU"], help="Devices to benchmark.")
     parser.add_argument("--integrator", choices=["EulerExplicit", "RK4"], default="EulerExplicit", help="Integrator used during the benchmark.")
