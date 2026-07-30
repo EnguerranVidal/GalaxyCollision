@@ -1,7 +1,7 @@
 import numpy as np
 
-from src.core.engine.calculators import Calculator
-from src.core.engine.particles import ParticleGroup
+from src.engine.calculators import Calculator
+from src.engine.particles import ParticleGroup
 
 try:
     import cupy as cp

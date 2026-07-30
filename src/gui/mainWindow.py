@@ -7,8 +7,8 @@ from PyQt5.QtCore import QUrl, QTimer, Qt, QThread, Q_ARG, QMetaObject, pyqtSlot
 from PyQt5.QtGui import QIcon, QDesktopServices
 from PyQt5.QtWidgets import *
 
-from src.core.engine.simulators import NBodySimulator
-from src.core.engine.parameters import SimulatorParameters
+from src.engine.simulators import NBodySimulator
+from src.engine.parameters import SimulatorParameters
 from src.gui.configEditor import SimulationConfigEditorDock
 from src.gui.visualizers.view3d import Universe3dViewWidget
 from src.gui.settings import UiSettings, WindowGeometry

@@ -4,7 +4,7 @@ from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QIntValidator
 from PyQt5.QtWidgets import *
 
-from src.core.engine.parameters import SimulatorParameters, BasicDistributionParameters, GalaxyDistributionParameters
+from src.engine.parameters import SimulatorParameters, BasicDistributionParameters, GalaxyDistributionParameters
 
 
 class SimulationConfigEditorDock(QDockWidget):

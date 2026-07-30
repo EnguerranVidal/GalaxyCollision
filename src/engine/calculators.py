@@ -1,8 +1,8 @@
 import numpy as np
 from abc import ABC, abstractmethod
 
-from src.core.engine.particles import ParticleGroup
-from src.core.engine.kernels import massKernel, forceKernel
+from src.engine.particles import ParticleGroup
+from src.engine.kernels import massKernel, forceKernel
 
 try:
     import cupy as cp

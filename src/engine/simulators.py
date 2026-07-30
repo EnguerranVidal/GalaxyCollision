@@ -2,10 +2,10 @@ import time
 
 from PyQt5.QtCore import QThread, pyqtSignal, QObject, pyqtSlot
 
-from src.core.engine.integrators import EulerExplicit, RK4
-from src.core.engine.calculators import NewtonCalculator, BarnesHutCalculator
-from src.core.engine.distributions import Distribution, GalaxyDistribution
-from src.core.engine.parameters import SimulatorParameters
+from src.engine.integrators import EulerExplicit, RK4
+from src.engine.calculators import NewtonCalculator, BarnesHutCalculator
+from src.engine.distributions import Distribution, GalaxyDistribution
+from src.engine.parameters import SimulatorParameters
 
 
 class NBodySimulator(QObject):

@@ -1,7 +1,7 @@
 import numpy as np
 
-from src.core.engine.parameters import SimulatorParameters
-from src.core.engine.particles import ParticleGroup
+from src.engine.parameters import SimulatorParameters
+from src.engine.particles import ParticleGroup
 
 
 class Distribution:
