@@ -1,5 +1,8 @@
 #include "BarnesHutTree.h"
 
+#include <cmath>
+#include <vector>
+
 #include <algorithm>
 #include <stdexcept>
 #include <functional>
@@ -39,8 +42,7 @@ void BarnesHutTree::build(const ParticleGroup& particles)
     clear();
     computeRootBounds(particles);
     for (int particle = 0; particle < particles.nbParticles; particle++) {insertParticle(particles, particle);}
-    computeMasses(particles);
-    computeCenterOfMass(ROOT,particles);
+    computeMassProperties(particles);
 }
 
 int BarnesHutTree::createNode()
