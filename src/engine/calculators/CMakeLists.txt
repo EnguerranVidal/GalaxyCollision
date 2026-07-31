@@ -5,6 +5,8 @@ target_sources(engine PRIVATE
         NewtonCalculator.h
         BarnesHutCalculator.cpp
         BarnesHutCalculator.h
+        BarnesHutTree.cpp
+        BarnesHutTree.h
 )
 
 add_subdirectory(cuda)
