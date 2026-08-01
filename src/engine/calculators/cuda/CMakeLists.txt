@@ -1,4 +1,4 @@
-target_sources(engine PRIVATE
+target_sources(nbody_engine PRIVATE
         BarnesHutTree.cu
         BarnesHutKernel.cu
 )
