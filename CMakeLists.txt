@@ -11,4 +11,7 @@ set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
 
-add_subdirectory(src/engine)add_subdirectory(src/engine)
+find_package(pybind11 REQUIRED)
+
+add_subdirectory(src/engine)
+add_subdirectory(src/bindings)

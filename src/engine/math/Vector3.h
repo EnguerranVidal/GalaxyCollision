@@ -47,11 +47,9 @@ struct Vector3
         return *this;
     }
 
-    [[nodiscard]]
-    float squaredNorm() const{return x*x + y*y + z*z;}
+    [[nodiscard]] float squaredNorm() const{return x*x + y*y + z*z;}
 
-    [[nodiscard]]
-    float norm() const {return std::sqrt(squaredNorm());}
+    [[nodiscard]] float norm() const {return std::sqrt(squaredNorm());}
 
     void normalize()
     {
@@ -64,8 +62,7 @@ struct Vector3
         }
     }
 
-    [[nodiscard]]
-    Vector3 normalized() const
+    [[nodiscard]] Vector3 normalized() const
     {
         Vector3 result = *this;
         result.normalize();
@@ -76,12 +73,6 @@ struct Vector3
 constexpr Vector3 operator*(float scalar, const Vector3& vector) {return vector * scalar;}
 
 
-inline float dot(const Vector3& a, const Vector3& b)
-{
-    return
-        a.x * b.x +
-        a.y * b.y +
-        a.z * b.z;
-}
+inline float dot(const Vector3& a, const Vector3& b) {return a.x * b.x + a.y * b.y + a.z * b.z;}
 
 inline Vector3 cross(const Vector3& a, const Vector3& b) {return {a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x};}

@@ -5,10 +5,10 @@
 #include "calculators/Calculator.h"
 
 
-class RK4 : public Integrator
+class RK4Integrator : public Integrator
 {
 public:
-    explicit RK4(float timeStep);
+    explicit RK4Integrator(float timeStep);
 
     void step(ParticleGroup& particles, Calculator& calculator) override;
 };

@@ -2,7 +2,7 @@
 
 #include "math/Vector3.h"
 #include "particles/ParticleGroup.h"
-#include "calculator/Calculator.h"
+#include "calculators/Calculator.h"
 
 
 namespace
@@ -18,9 +18,9 @@ Vector3 weightedAverage(const Vector3& k1, const Vector3& k2, const Vector3& k3,
 }
 }
 
-RK4::RK4(float timeStep): Integrator(timeStep) {}
+RK4Integrator::RK4Integrator(float timeStep): Integrator(timeStep) {}
 
-void RK4::step(ParticleGroup& particles, Calculator& calculator)
+void RK4Integrator::step(ParticleGroup& particles, Calculator& calculator)
 {
     std::vector<Vector3> positions = particles.positions;
     std::vector<Vector3> velocities = particles.velocities;
