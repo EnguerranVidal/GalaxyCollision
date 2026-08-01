@@ -262,3 +262,5 @@ std::vector<Vector3> BarnesHutTree::computeAccelerations(const ParticleGroup& pa
     }
     return accelerations;
 }
+
+int BarnesHutTree::getMaxParticles() const {return maxParticles;}

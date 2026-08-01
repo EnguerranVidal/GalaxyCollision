@@ -9,7 +9,7 @@ add_subdirectory(particles)
 add_subdirectory(calculators)
 add_subdirectory(distributions)
 add_subdirectory(integrators)
-add_subdirectory(simulations)
+add_subdirectory(parameters)
 add_subdirectory(utils)
 add_subdirectory(math)
 

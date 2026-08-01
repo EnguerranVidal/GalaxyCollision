@@ -17,6 +17,10 @@ public:
 
     void build(const ParticleGroup& particles);
 
+    [[nodiscard]] std::vector<Vector3> computeAccelerations(const ParticleGroup& particles, float gravitationalConstant, float theta, float softening) const;
+
+    [[nodiscard]] int getMaxParticles() const;
+
     void clear();
 
 
@@ -34,8 +38,6 @@ private:
     [[nodiscard]] int childIndex(int node, const Vector3& position) const;
 
     [[nodiscard]] Vector3 childCenter(int node,int child) const;
-
-    [[nodiscard]] std::vector<Vector3> computeAccelerations(const ParticleGroup& particles, float gravitationalConstant, float theta, float softening) const;
 
     int maxParticles;
     int maxNodes;
