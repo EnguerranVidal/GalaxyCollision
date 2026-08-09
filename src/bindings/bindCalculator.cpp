@@ -7,6 +7,7 @@
 
 void bindCalculator(py::module_& m)
 {
+    py::class_<Calculator>(m, "Calculator");
     py::class_<NewtonCalculator, Calculator>(m, "NewtonCalculator")
         .def(py::init<float>(), py::arg("gravitationalConstant") = 1.0f)
         .def("computeAccelerations", &NewtonCalculator::computeAccelerations,py::arg("particles"));

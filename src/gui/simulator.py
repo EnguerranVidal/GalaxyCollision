@@ -1,16 +1,19 @@
+from __future__ import annotations
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
 
 import engine
 from src.gui.parameters import *
 
 
-class Simulator(QObject):
+class NBodySimulator(QObject):
     positionsReady = pyqtSignal(dict)
     simulationFinished = pyqtSignal()
 
     def __init__(self, parameters, parent=None):
         super().__init__(parent)
+        print(engine.__file__)
         self.parameters = parameters
+        self.cppParameters = None
         self.particles = None
         self.distribution = None
         self.calculator = None
@@ -20,15 +23,15 @@ class Simulator(QObject):
         self._time = 0.0
 
     def initialize(self):
-        self.distribution = self._createDistribution(self.parameters)
-        self.calculator = self._createCalculator(self.parameters)
-        self.integrator = self._createIntegrator(self.parameters)
-        self.particles = self.distribution.generate(self.parameters)
+        self.cppParameters = self.parameters.toCpp()
+        self.distribution = self._createDistribution(self.cppParameters)
+        self.calculator = self._createCalculator(self.cppParameters)
+        self.integrator = self._createIntegrator(self.cppParameters)
+        self.particles = self.distribution.generate(self.cppParameters)
         self._time = 0.0
 
     @staticmethod
-    def _createDistribution(parameters=None):
-        parameters = parameters if parameters is not None else parameters
+    def _createDistribution(parameters: engine.SimulatorParameters):
         distributionType = parameters.distributionType.upper()
         if distributionType == "GALAXY":
             distribution = engine.GalaxyDistribution()
@@ -38,8 +41,7 @@ class Simulator(QObject):
 
 
     @staticmethod
-    def _createCalculator(parameters: SimulatorParameters = None):
-        parameters = parameters if parameters is not None else parameters
+    def _createCalculator(parameters: engine.SimulatorParameters):
         calculatorType = parameters.calculatorType.upper()
         if calculatorType == "BARNES_HUT":
             calculator = engine.BarnesHutCalculator(parameters.theta, parameters.gravitationalConstant)
@@ -47,8 +49,8 @@ class Simulator(QObject):
             calculator = engine.NewtonCalculator(parameters.gravitationalConstant)
         return calculator
 
-    def _createIntegrator(self, parameters=None):
-        parameters = parameters if parameters is not None else self.parameters
+    @staticmethod
+    def _createIntegrator(parameters: engine.SimulatorParameters):
         integratorType = parameters.integratorType.upper()
         if integratorType == "RK4":
             integrator = engine.RK4Integrator(parameters.timeStep)
@@ -67,7 +69,7 @@ class Simulator(QObject):
             self.integrator.step(self.particles, self.calculator)
             self._time += self.parameters.timeStep
             self.positionsReady.emit({"time": self._time, "positions": self.particles.getPositions()})
-            if not self.parameters.endless and self._time >= self.parameters.maxTime:
+            if not self.cppParameters.endless and self._time >= self.cppParameters.maxTime:
                 break
         self._running = False
         self.simulationFinished.emit()
@@ -77,5 +79,5 @@ class Simulator(QObject):
         if self.particles is None:
             self.initialize()
         self.integrator.step(self.particles, self.calculator)
-        self._time += self.parameters.timeStep
+        self._time += self.cppParameters.timeStep
         self.positionsReady.emit({"time": self._time, "positions": self.particles.getPositions()})

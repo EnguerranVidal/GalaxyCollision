@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Optional
+import engine
 
 
 @dataclass
@@ -36,6 +37,25 @@ class BasicDistributionParameters:
 
     def __repr__(self):
         return f"BasicDistributionParameters(numParticles={self.nbParticles}, positionScale={self.positionScale})"
+
+    def toCpp(self):
+        cpp = engine.BasicDistributionParameters()
+        cpp.nbParticles = self.nbParticles
+        cpp.positionScale = self.positionScale
+        cpp.velocityScale = self.velocityScale
+        cpp.massMinimum = self.massMinimum
+        cpp.massMaximum = self.massMaximum
+        return cpp
+
+    @classmethod
+    def fromCpp(cls, cpp):
+        return cls(
+            nbParticles=cpp.nbParticles,
+            positionScale=cpp.positionScale,
+            velocityScale=cpp.velocityScale,
+            massMinimum=cpp.massMinimum,
+            massMaximum=cpp.massMaximum,
+        )
 
 
 @dataclass
@@ -85,13 +105,40 @@ class GalaxyDistributionParameters:
     def __repr__(self):
         return f"GalaxyDistributionParameters(numParticles={self.nbParticles}, radius={self.radius}, height={self.height})"
 
+    def toCpp(self):
+        cpp = engine.GalaxyDistributionParameters()
+        cpp.nbParticles = self.nbParticles
+        cpp.totalMass = self.totalMass
+        cpp.radius = self.radius
+        cpp.height = self.height
+        cpp.bulgeFraction = self.bulgeFraction
+        cpp.haloFraction = self.haloFraction
+        cpp.velocityDispersion = self.velocityDispersion
+        cpp.plummerRadius = self.plummerRadius
+        cpp.haloRadius = self.haloRadius
+        return cpp
+
+    @classmethod
+    def fromCpp(cls, cpp):
+        return cls(
+            nbParticles=cpp.nbParticles,
+            totalMass=cpp.totalMass,
+            radius=cpp.radius,
+            height=cpp.height,
+            bulgeFraction=cpp.bulgeFraction,
+            haloFraction=cpp.haloFraction,
+            velocityDispersion=cpp.velocityDispersion,
+            plummerRadius=cpp.plummerRadius,
+            haloRadius=cpp.haloRadius,
+        )
+
 
 @dataclass
 class SimulatorParameters:
     name: str = "Untitled Simulation"
     timeStep: float = 0.001
     theta: float = 0.5
-    seed: Optional[int] = None
+    seed: int = 0
     device: str = "GPU"
     gravitationalConstant: float = 1.0
     integratorType: str = "RK4"
@@ -134,7 +181,7 @@ class SimulatorParameters:
             "galaxyDistributionParameters": self.galaxyDistributionParameters.toDict() if self.galaxyDistributionParameters is not None else None,
         }
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         if not isinstance(other, SimulatorParameters):
             return NotImplemented
         mainEquality = (
@@ -162,3 +209,43 @@ class SimulatorParameters:
         distributionType = self.galaxyDistributionParameters if self.distributionType.upper() == "GALAXY" else self.basicDistributionParameters
         nbParticles = distributionType.nbParticles if distributionType else 0
         return f"SimulatorParameters(name='{self.name}', seed={self.seed}, device={self.device}, distribution={self.distributionType}, particles={nbParticles})"
+
+
+    def toCpp(self):
+        cpp = engine.SimulatorParameters()
+        cpp.name = self.name
+        cpp.timeStep = self.timeStep
+        cpp.theta = self.theta
+        cpp.seed = self.seed
+        cpp.device = self.device
+        cpp.gravitationalConstant = self.gravitationalConstant
+        cpp.integratorType = self.integratorType
+        cpp.distributionType = self.distributionType
+        cpp.calculatorType = self.calculatorType
+        cpp.endless = self.endless
+        cpp.maxTime = self.maxTime
+        cpp.saveResults = self.saveResults
+        if self.distributionType.upper() == "GALAXY":
+            cpp.galaxyDistributionParameters = self.galaxyDistributionParameters.toCpp()
+        else:
+            cpp.basicDistributionParameters = self.basicDistributionParameters.toCpp()
+        return cpp
+
+    @classmethod
+    def fromCpp(cls, cpp):
+        return cls(
+            name = cpp.name,
+            timeStep = cpp.timeStep,
+            theta = cpp.theta,
+            seed = cpp.seed,
+            device = cpp.device,
+            gravitationalConstant = cpp.gravitationalConstant,
+            integratorType = cpp.integratorType,
+            distributionType = cpp.distributionType,
+            calculatorType = cpp.calculatorType,
+            endless = cpp.endless,
+            maxTime = cpp.maxTime,
+            saveResults = cpp.saveResults,
+            galaxyDistributionParameters = cpp.galaxyDistributionParameters.fromCpp(),
+            basicDistributionParameters = cpp.basicDistributionParameters.fromCpp()
+        )

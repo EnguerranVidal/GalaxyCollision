@@ -7,6 +7,7 @@
 
 void bindDistribution(py::module_& m)
 {
+    py::class_<Distribution>(m, "Distribution");
     py::class_<BasicDistribution, Distribution>(m, "BasicDistribution")
         .def(py::init<>())
         .def("generate", &BasicDistribution::generate, py::arg("parameters"));

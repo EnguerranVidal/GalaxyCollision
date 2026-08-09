@@ -6,6 +6,7 @@
 
 void bindIntegrator(py::module_& m)
 {
+    py::class_<Integrator>(m, "Integrator");
     py::class_<EulerExplicitIntegrator>(m, "EulerIntegrator")
         .def(py::init<float>(), py::arg("timeStep"))
         .def("step", &EulerExplicitIntegrator::step, py::arg("particles"), py::arg("calculator"));
