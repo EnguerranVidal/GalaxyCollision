@@ -4,14 +4,14 @@ from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QIntValidator
 from PyQt5.QtWidgets import *
 
-from src.engine.parameters import SimulatorParameters, BasicDistributionParameters, GalaxyDistributionParameters
+from src.gui.parameters import SimulatorParameters, BasicDistributionParameters, GalaxyDistributionParameters
 
 
 class SimulationConfigEditorDock(QDockWidget):
     launchSimulationPressed = pyqtSignal(object)
     resetSimulationPressed = pyqtSignal(object)
 
-    def __init__(self, initialParameters: SimulatorParameters = None, parent=None):
+    def __init__(self, initialParameters: SimulatorParameters, parent=None):
         super().__init__("Simulation Configuration", parent)
         self.activeParameters = copy.deepcopy(initialParameters or SimulatorParameters())
         self.uiParameters = copy.deepcopy(self.activeParameters)

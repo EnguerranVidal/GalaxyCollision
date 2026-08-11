@@ -1,4 +1,6 @@
-numpy
-matplotlib
+cupy
 imageio
+matplotlib
+numpy
+pybind11
 PyQt5
