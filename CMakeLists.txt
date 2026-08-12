@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.24)
 
-project(GalaxyEngine LANGUAGES CXX CUDA)
+project(GalaxyEngine LANGUAGES CXX)
+# project(GalaxyEngine LANGUAGES CXX CUDA)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
