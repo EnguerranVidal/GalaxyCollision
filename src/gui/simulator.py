@@ -19,7 +19,6 @@ class NBodySimulator(QObject):
         self.calculator = None
         self.integrator = None
         self.isRunning = False
-        self.isPaused = False
         self.simulationTime = 0.0
 
     def initialize(self):
@@ -59,18 +58,16 @@ class NBodySimulator(QObject):
         return integrator
 
     @pyqtSlot(SimulatorParameters)
-    def prepareAndRun(self, parameters: SimulatorParameters):
+    def prepareAndRun(self, parameters):
         self.parameters = parameters
+        self.particles = None
         self.initialize()
-        self.isRunning = True
         self.run()
 
     @pyqtSlot()
     def run(self):
         self.isRunning = True
         while self.isRunning:
-            if self.isPaused:
-                continue
             self.integrator.step(self.particles, self.calculator)
             self.simulationTime += self.parameters.timeStep
             self.positionsReady.emit({"time": self.simulationTime, "positions": self.particles.getPositions()})

@@ -139,7 +139,7 @@ class SimulatorParameters:
     timeStep: float = 0.001
     theta: float = 0.5
     seed: int = 0
-    device: str = "GPU"
+    device: str = "CPU"
     gravitationalConstant: float = 1.0
     integratorType: str = "RK4"
     distributionType: str = "GALAXY"
@@ -217,7 +217,7 @@ class SimulatorParameters:
         cpp.timeStep = self.timeStep
         cpp.theta = self.theta
         cpp.seed = self.seed
-        cpp.device = self.device
+        cpp.device = self.device.lower()
         cpp.gravitationalConstant = self.gravitationalConstant
         cpp.integratorType = self.integratorType
         cpp.distributionType = self.distributionType

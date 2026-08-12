@@ -1,4 +1,5 @@
 #include "bindings.h"
+#include <pybind11/stl.h>
 
 #include "particles/ParticleGroup.h"
 #include "math/Vector3.h"

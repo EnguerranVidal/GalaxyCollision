@@ -9,4 +9,6 @@ target_sources(nbody_engine PRIVATE
         BarnesHutTree.h
 )
 
-add_subdirectory(cuda)
+if(GALAXY_ENABLE_CUDA)
+    add_subdirectory(cuda)
+endif()

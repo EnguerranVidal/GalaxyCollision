@@ -49,6 +49,32 @@ def findNinja()-> str | None:
             return str(candidate)
     return None
 
+def findVcVars() -> Path:
+    candidates = [Path(r'C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvars64.bat'),
+                  Path(r'C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat'),
+                  Path(r'C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\Auxiliary\Build\vcvars64.bat'),
+                  Path(r'C:\Program Files\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat')]
+    vsWhere = Path(r'C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe')
+    if vsWhere.is_file():
+        out = subprocess.check_output([str(vsWhere), '-latest', '-products', '*', '-requires', 'Microsoft.VisualStudio.Component.VC.Tools.x86.x64', '-property', 'installationPath'], text=True).strip()
+        if out:
+            candidates.insert(0, Path(out) / 'VC' / 'Auxiliary' / 'Build' / 'vcvars64.bat')
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    raise FileNotFoundError('vcvars64.bat not found. Install VS with \"Desktop development with C++\".')
+
+def runWithMsVc(commandList: list[str]) -> None:
+    vcVars = findVcVars()
+    parts = []
+    for command in commandList:
+        commandString = str(command)
+        parts.append(f'"{commandString}"' if any(ch in commandString for ch in ' &()[]{}^=;!\'+,`~') else commandString)
+    inner = " ".join(parts)
+    full = f'call "{vcVars}" && {inner}'
+    print("+", full)
+    subprocess.check_call(full, shell=True)
+
 def ensurePyBind11()-> str:
     try:
         import pybind11
@@ -67,7 +93,7 @@ def findBuiltModule(buildDirectory)-> Path | None:
     return candidates[0] if candidates else None
 
 
-def build(clean: bool = False)-> int:
+def build(clean: bool = False, withCuda: bool = False)-> int:
     print(f'Using Python {sys.version}')
     print(f'Executable: {sys.executable}')
     if '3.10' not in sys.version:
@@ -79,51 +105,41 @@ def build(clean: bool = False)-> int:
     pybind11Directory = ensurePyBind11()
     print(f'pybind11 cmake: {pybind11Directory}')
     if clean and BUILD_DIR.exists():
-        print(f'Cleaning {BUILD_DIR}')
         shutil.rmtree(BUILD_DIR)
-
     BUILD_DIR.mkdir(parents=True, exist_ok=True)
-    cmakeConfiguration = [cmake, '-S', str(ROOT), '-B', str(BUILD_DIR), f'-DPython_EXECUTABLE={sys.executable}', f'-Dpybind11_DIR={pybind11Directory}', '-DCMAKE_BUILD_TYPE=Release']
+
+    print('Loading MSVC via vcvars64, then configuring...')
+    cmakeConfiguration = [cmake, '-S', str(ROOT), '-B', str(BUILD_DIR), f'-DPython_EXECUTABLE={sys.executable}', f'-Dpybind11_DIR={pybind11Directory}', '-DCMAKE_BUILD_TYPE=Release', f"-DGALAXY_ENABLE_CUDA={'ON' if withCuda else 'OFF'}"]
     cmakeConfiguration = cmakeConfiguration + ['-G', 'Ninja', f'-DCMAKE_MAKE_PROGRAM={ninja}'] if ninja else cmakeConfiguration
-    run(cmakeConfiguration)
+    runWithMsVc(cmakeConfiguration)
     buildConfiguration = [cmake, '--build', str(BUILD_DIR), '--config', 'Release']
     buildConfiguration = buildConfiguration + ['--config', 'Release'] if not ninja else buildConfiguration
-    run(buildConfiguration)
+    runWithMsVc(buildConfiguration)
     module = findBuiltModule(BUILD_DIR)
     if module is None:
-        print('ERROR: built engine module not found under', BUILD_DIR)
-        print('Check the CMake/build log for compile or link errors.')
+        print('ERROR: no engine.pyd/.so found under', BUILD_DIR)
         return 1
 
     destination = ROOT / module.name
     shutil.copy2(module, destination)
     print(f'Installed: {destination}')
     sys.path.insert(0, str(ROOT))
-    if 'engine' in sys.modules:
-        del sys.modules['engine']
-    try:
-        import engine
-    except Exception as exc:
-        print('ERROR: could not import engine after install:', exc)
+    sys.modules.pop("engine", None)
+    import engine
+    print('engine.__file__ =', engine.__file__)
+    ok = hasattr(engine, 'SimulatorParameters')
+    print('has SimulatorParameters:', ok)
+    if not ok or engine.__file__ is None:
         return 1
-    print('engine.__file__ =', getattr(engine, '__file__', None))
-    print('has SimulatorParameters:', hasattr(engine, 'SimulatorParameters'))
-    attributes = [a for a in dir(engine) if not a.startswith("_")]
-    print('exported:', ', '.join(attributes) if attributes else '(none)')
-    if getattr(engine, "__file__", None) is None:
-        print('ERROR: imported a namespace package (likely src/engine), not the .pyd.\nKeep the .pyd next to main.py and ensure project root is first on sys.path.')
-        return 1
-    if not hasattr(engine, 'SimulatorParameters'):
-        print('ERROR: .pyd loaded but SimulatorParameters is missing.\nFix bindParameters.cpp / base-class bindings and rebuild.')
-        return 1
-    print('OK — engine is ready for this Python / GUI.')
+    print('OK — run:  python main.py')
     return 0
 
 def main() -> int:
     parser = argparse.ArgumentParser(description='Build GalaxyCollision pybind11 engine module')
     parser.add_argument('--clean', action='store_true', help='Delete the build/ directory before configuring')
+    parser.add_argument('--cuda', action='store_true', help='Enable CUDA (needs CUDA Toolkit)')
     args = parser.parse_args()
-    return build(clean=args.clean)
+    return build(clean=args.clean, withCuda=args.cuda)
 
 
 if __name__ == '__main__':
