@@ -1,14 +1,27 @@
 #include "NewtonCalculator.h"
+#include "particles/ParticleGroup.h"
+
+#ifdef GALAXY_ENABLE_CUDA
+#include "cuda/NewtonKernel.cuh"
+#endif
 
 #include <cmath>
-
-#include "particles/ParticleGroup.h"
+#include <stdexcept>
 
 
 NewtonCalculator::NewtonCalculator(float gravitationalConstant): Calculator(gravitationalConstant) {}
 
 std::vector<Vector3> NewtonCalculator::computeAccelerations(const ParticleGroup& particles)
 {
+#ifdef GALAXY_ENABLE_CUDA
+    if (particles.device == "gpu")
+    {
+        if (!galaxy_cuda::isCudaAvailable())
+            throw std::runtime_error("GPU device requested but no CUDA device is available");
+        return galaxy_cuda::computeNewtonAccelerationsCuda(particles.positions, particles.masses, gravitationalConstant,softening);
+    }
+#endif
+
     std::vector<Vector3> accelerations(particles.nbParticles, Vector3());
 
     const float softeningSquared = softening * softening;
