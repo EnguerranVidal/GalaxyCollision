@@ -1,7 +1,5 @@
 #include "BarnesHutCalculator.h"
-
 #include "particles/ParticleGroup.h"
-
 
 
 BarnesHutCalculator::BarnesHutCalculator(float gravitationalConstant, float theta): Calculator(gravitationalConstant), theta(theta) {}

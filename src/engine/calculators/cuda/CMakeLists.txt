@@ -1,15 +1,15 @@
 target_sources(nbody_engine PRIVATE
         NewtonKernel.cu
         NewtonKernel.cuh
-        BarnesHutTree.cu
         BarnesHutKernel.cu
+        BarnesHutKernel.cuh
 )
 
 set_source_files_properties(
         NewtonKernel.cu
         NewtonKernel.cuh
-        BarnesHutTree.cu
         BarnesHutKernel.cu
+        BarnesHutKernel.cuh
         PROPERTIES
         LANGUAGE CUDA
 )

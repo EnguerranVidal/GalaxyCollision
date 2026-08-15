@@ -1,13 +1,15 @@
 #include "BarnesHutTree.h"
+#include "particles/ParticleGroup.h"
+
+#ifdef GALAXY_ENABLE_CUDA
+#include "cuda/BarnesHutKernel.cuh"
+#endif
 
 #include <cmath>
 #include <vector>
-
 #include <algorithm>
 #include <stdexcept>
 #include <functional>
-
-#include "particles/ParticleGroup.h"
 
 
 BarnesHutTree::BarnesHutTree(int maxParticles): maxParticles(maxParticles), maxNodes(8 * maxParticles), nodeCount(0) {
@@ -154,6 +156,15 @@ void BarnesHutTree::computeMassProperties(const ParticleGroup& particles)
     if (nodeCount == 0) {return;}
     int maximumDepth = 0;
     for (int node = 0; node < nodeCount; node++) {maximumDepth = std::max(maximumDepth, nodeDepth[node]);}
+
+#ifdef GALAXY_ENABLE_CUDA
+    if (particles.device == "gpu")
+    {
+        galaxy_cuda::computeMassPropertiesCuda(particles.positions, particles.masses, nodeDepth, nodeParticle, nodeChildren, nodeHasChildren, nodeCount, maximumDepth, nodeMass, nodeCenterOfMass);
+        return;
+    }
+#endif
+
     for (int node = 0; node < nodeCount; node++)
     {
         if (!nodeHasChildren[node])
@@ -208,6 +219,10 @@ void BarnesHutTree::computeMassProperties(const ParticleGroup& particles)
 
 std::vector<Vector3> BarnesHutTree::computeAccelerations(const ParticleGroup& particles, float gravitationalConstant, float theta, float softening) const
 {
+#ifdef GALAXY_ENABLE_CUDA
+    if (particles.device == "gpu") {return galaxy_cuda::computeBarnesHutAccelerationsCuda(particles.positions, nodeCenterOfMass, nodeMass, nodeHalfSize, nodeChildren, nodeParticle, nodeHasChildren, nodeCount, gravitationalConstant, theta, softening);}
+#endif
+
     std::vector<Vector3> accelerations(particles.nbParticles, Vector3());
     float softeningSquared = softening * softening;
     for (int particle = 0; particle < particles.nbParticles; particle++)
