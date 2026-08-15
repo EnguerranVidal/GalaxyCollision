@@ -1,14 +1,17 @@
 from __future__ import annotations
-import copy
-import engine
+import time
+import numpy as np
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
 
+import engine
 from src.gui.parameters import *
 
 
 class NBodySimulator(QObject):
     positionsReady = pyqtSignal(dict)
     simulationFinished = pyqtSignal()
+
+    MAX_FPS = 30.0
 
     def __init__(self, parameters, parent=None):
         super().__init__(parent)
@@ -20,6 +23,7 @@ class NBodySimulator(QObject):
         self.integrator = None
         self.isRunning = False
         self.simulationTime = 0.0
+        self.frameInterval = 1.0 / self.MAX_FPS
 
     def initialize(self):
         self.cppParameters = self.parameters.toCpp()
@@ -66,13 +70,22 @@ class NBodySimulator(QObject):
 
     @pyqtSlot()
     def run(self):
+        if self.particles is None:
+            self.initialize()
         self.isRunning = True
+        nextFrame = time.perf_counter()
         while self.isRunning:
             self.integrator.step(self.particles, self.calculator)
             self.simulationTime += self.parameters.timeStep
-            self.positionsReady.emit({"time": self.simulationTime, "positions": self.particles.getPositions()})
+            now = time.perf_counter()
+            if now >= nextFrame:
+                self.positionsReady.emit({"default": self._positionsAsArray()})
+                nextFrame = now + self.frameInterval
             if not self.cppParameters.endless and self.simulationTime >= self.cppParameters.maxTime:
                 break
+            sleepFor = nextFrame - time.perf_counter()
+            if sleepFor > 0:
+                time.sleep(sleepFor)
         self.isRunning = False
         self.simulationFinished.emit()
 
@@ -82,8 +95,14 @@ class NBodySimulator(QObject):
             self.initialize()
         self.integrator.step(self.particles, self.calculator)
         self.simulationTime += self.cppParameters.timeStep
-        self.positionsReady.emit({"time": self.simulationTime, "positions": self.particles.getPositions()})
+        self.positionsReady.emit({"default": self._positionsAsArray()})
 
     @pyqtSlot()
     def stop(self):
         self.isRunning = False
+
+    def _positionsAsArray(self):
+        positions = self.particles.getPositions()
+        if not positions:
+            return np.zeros((0, 3), dtype=np.float32)
+        return np.asarray([[position.x, position.y, position.z] for position in positions], dtype=np.float32)

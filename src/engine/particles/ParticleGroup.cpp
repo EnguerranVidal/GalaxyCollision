@@ -98,5 +98,7 @@ ParticleGroup ParticleGroup::groupToGpu() const
 }
 
 int ParticleGroup::getNbParticles() const {return nbParticles;}
-
+const std::vector<Vector3>& ParticleGroup::getPositions() const {return positions;}
+const std::vector<Vector3>& ParticleGroup::getVelocities() const {return velocities;}
+const std::vector<float>& ParticleGroup::getMasses() const {return masses;}
 const std::string& ParticleGroup::getDevice() const {return device;}

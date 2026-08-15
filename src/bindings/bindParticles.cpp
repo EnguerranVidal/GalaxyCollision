@@ -18,9 +18,9 @@ void bindParticles(py::module_& m)
         .def("groupToGpu", &ParticleGroup::groupToGpu)
         .def("getNbParticles",  &ParticleGroup::getNbParticles)
         .def("getDevice", &ParticleGroup::getDevice, py::return_value_policy::reference_internal)
-        .def("getPositions", [](const ParticleGroup& p) { return p.positions; })
-        .def("getVelocities", [](const ParticleGroup& p) { return p.velocities; })
-        .def("getMasses", [](const ParticleGroup& p) { return p.masses; })
+        .def("getPositions", &ParticleGroup::getPositions)
+        .def("getVelocities", &ParticleGroup::getVelocities)
+        .def("getMasses", &ParticleGroup::getMasses)
         .def("massCenter", [](const ParticleGroup& particles)
         {
             Vector3 position;
