@@ -28,7 +28,7 @@ bool isCudaAvailable()
 }
 
 
-constexpr int TILE_SIZE = 16;
+constexpr int TILE_SIZE = 32;
 
 __global__ void newtonForceTiledKernel(
     const float3* __restrict__ positions,
