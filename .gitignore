@@ -63,3 +63,4 @@ Thumbs.db
 *.local
 /data/
 settings.json
+benchmark_gpu_cpu.png
