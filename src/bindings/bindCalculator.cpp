@@ -1,5 +1,7 @@
 #include "bindings.h"
 
+#include <pybind11/stl.h>
+
 #include "calculators/Calculator.h"
 #include "calculators/NewtonCalculator.h"
 #include "calculators/BarnesHutCalculator.h"
