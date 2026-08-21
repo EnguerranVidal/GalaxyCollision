@@ -52,6 +52,9 @@ class SimulationConfigEditorDock(QDockWidget):
         self.deviceCombo.addItem('GPU (CUDA)', userData='GPU')
         self.deviceCombo.addItem('CPU', userData='CPU')
         self.deviceCombo.currentIndexChanged.connect(self._onUIChanged)
+        self.numParticles = QSpinBox()
+        self.numParticles.setRange(500, 1000000)
+        self.numParticles.valueChanged.connect(self._onUIChanged)
         self.gravitationalConstantSpin = QDoubleSpinBox()
         self.gravitationalConstantSpin.setRange(0.01, 100.0)
         self.gravitationalConstantSpin.setDecimals(4)
@@ -74,6 +77,7 @@ class SimulationConfigEditorDock(QDockWidget):
         simulationCoreForm.addRow("Force Calculator:", self.calculatorTypeCombo)
         simulationCoreForm.addRow("Integrator:", self.integratorTypeCombo)
         simulationCoreForm.addRow("Device:", self.deviceCombo)
+        simulationCoreForm.addRow("Number of Particles:", self.numParticles)
         simulationCoreForm.addRow("Gravitational Constant (G):", self.gravitationalConstantSpin)
         simulationCoreForm.addRow("Time Step (dt):", self.timeStepSpin)
         simulationCoreForm.addRow("Barnes-Hut Theta:", self.thetaValueSpin)
@@ -232,10 +236,6 @@ class BasicDistributionWidget(QWidget):
         super().__init__()
         self.parameters = parameters or BasicDistributionParameters()
         # PARAMETERS USER INTERFACE
-        self.numParticles = QSpinBox()
-        self.numParticles.setRange(100, 100000)
-        self.numParticles.setValue(self.parameters.nbParticles)
-        self.numParticles.valueChanged.connect(self.changed.emit)
         self.positionScale = QDoubleSpinBox()
         self.positionScale.setRange(1.0, 100.0)
         self.positionScale.setValue(self.parameters.positionScale)
@@ -247,29 +247,24 @@ class BasicDistributionWidget(QWidget):
         # MAIN LAYOUT
         group = QGroupBox("Basic Random Distribution Parameters")
         form = QFormLayout(group)
-        form.addRow("Number of Particles:", self.numParticles)
         form.addRow("Position Scale:", self.positionScale)
         form.addRow("Velocity Scale:", self.velocityScale)
         mainLayout = QVBoxLayout(self)
         mainLayout.addWidget(group)
 
     def getParameters(self):
-        self.parameters.nbParticles = self.numParticles.value()
         self.parameters.positionScale = self.positionScale.value()
         self.parameters.velocityScale = self.velocityScale.value()
         return self.parameters
 
     def syncUIFromParameters(self, parameters: BasicDistributionParameters):
-        self.numParticles.blockSignals(True)
         self.positionScale.blockSignals(True)
         self.velocityScale.blockSignals(True)
         try:
-            self.numParticles.setValue(parameters.nbParticles)
             self.positionScale.setValue(parameters.positionScale)
             self.velocityScale.setValue(parameters.velocityScale)
             self.parameters = parameters
         finally:
-            self.numParticles.blockSignals(False)
             self.positionScale.blockSignals(False)
             self.velocityScale.blockSignals(False)
 
@@ -282,10 +277,6 @@ class GalaxyDistributionWidget(QWidget):
         super().__init__()
         self.parameters = parameters or GalaxyDistributionParameters()
         # PARAMETERS USER INTERFACE
-        self.numParticles = QSpinBox()
-        self.numParticles.setRange(500, 100000)
-        self.numParticles.setValue(self.parameters.nbParticles)
-        self.numParticles.valueChanged.connect(self.changed.emit)
         self.totalMass = QDoubleSpinBox()
         self.totalMass.setRange(100.0, 10000.0)
         self.totalMass.setValue(self.parameters.totalMass)
@@ -330,7 +321,6 @@ class GalaxyDistributionWidget(QWidget):
         group = QGroupBox("Galaxy Distribution Parameters")
         diskGroup = QGroupBox("Disk")
         diskForm = QFormLayout(diskGroup)
-        diskForm.addRow("Number of Particles:", self.numParticles)
         diskForm.addRow("Total Mass:", self.totalMass)
         diskForm.addRow("Radius:", self.radius)
         diskForm.addRow("Disk Height:", self.height)
@@ -351,7 +341,6 @@ class GalaxyDistributionWidget(QWidget):
         mainLayout.addWidget(group)
 
     def getParameters(self):
-        self.parameters.nbParticles = self.numParticles.value()
         self.parameters.totalMass = self.totalMass.value()
         self.parameters.radius = self.radius.value()
         self.parameters.height = self.height.value()
@@ -363,7 +352,6 @@ class GalaxyDistributionWidget(QWidget):
         return self.parameters
 
     def syncUIFromParameters(self, parameters: GalaxyDistributionParameters):
-        self.numParticles.blockSignals(True)
         self.totalMass.blockSignals(True)
         self.radius.blockSignals(True)
         self.height.blockSignals(True)
@@ -373,7 +361,6 @@ class GalaxyDistributionWidget(QWidget):
         self.plummerRadius.blockSignals(True)
         self.haloRadius.blockSignals(True)
         try:
-            self.numParticles.setValue(parameters.nbParticles)
             self.totalMass.setValue(parameters.totalMass)
             self.radius.setValue(parameters.radius)
             self.height.setValue(parameters.height)
@@ -384,7 +371,6 @@ class GalaxyDistributionWidget(QWidget):
             self.haloRadius.setValue(parameters.haloRadius)
             self.parameters = parameters
         finally:
-            self.numParticles.blockSignals(False)
             self.totalMass.blockSignals(False)
             self.radius.blockSignals(False)
             self.height.blockSignals(False)

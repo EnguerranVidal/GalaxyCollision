@@ -5,7 +5,6 @@ import engine
 
 @dataclass
 class BasicDistributionParameters:
-    nbParticles: int = 1000
     positionScale: float = 10.0
     velocityScale: float = 1.0
     massMinimum: float = 0.1
@@ -17,7 +16,6 @@ class BasicDistributionParameters:
 
     def toDict(self):
         return {
-            "nbParticles": self.nbParticles,
             "positionScale": self.positionScale,
             "velocityScale": self.velocityScale,
             "massMinimum": self.massMinimum,
@@ -28,7 +26,6 @@ class BasicDistributionParameters:
         if not isinstance(other, BasicDistributionParameters):
             return NotImplemented
         return (
-                self.nbParticles == other.nbParticles and
                 abs(self.positionScale - other.positionScale) < 1e-9 and
                 abs(self.velocityScale - other.velocityScale) < 1e-9 and
                 abs(self.massMinimum - other.massMinimum) < 1e-9 and
@@ -36,11 +33,10 @@ class BasicDistributionParameters:
         )
 
     def __repr__(self):
-        return f"BasicDistributionParameters(numParticles={self.nbParticles}, positionScale={self.positionScale})"
+        return f"BasicDistributionParameters(positionScale={self.positionScale})"
 
     def toCpp(self):
         cpp = engine.BasicDistributionParameters()
-        cpp.nbParticles = self.nbParticles
         cpp.positionScale = self.positionScale
         cpp.velocityScale = self.velocityScale
         cpp.massMinimum = self.massMinimum
@@ -50,7 +46,6 @@ class BasicDistributionParameters:
     @classmethod
     def fromCpp(cls, cpp):
         return cls(
-            nbParticles=cpp.nbParticles,
             positionScale=cpp.positionScale,
             velocityScale=cpp.velocityScale,
             massMinimum=cpp.massMinimum,
@@ -60,7 +55,6 @@ class BasicDistributionParameters:
 
 @dataclass
 class GalaxyDistributionParameters:
-    nbParticles: int = 5000
     totalMass: float = 1000.0
     radius: float = 15.0
     height: float = 2.0
@@ -76,7 +70,6 @@ class GalaxyDistributionParameters:
 
     def toDict(self):
         return {
-            "nbParticles": self.nbParticles,
             "totalMass": self.totalMass,
             "radius": self.radius,
             "height": self.height,
@@ -91,7 +84,6 @@ class GalaxyDistributionParameters:
         if not isinstance(other, GalaxyDistributionParameters):
             return NotImplemented
         return (
-                self.nbParticles == other.nbParticles and
                 abs(self.totalMass - other.totalMass) < 1e-9 and
                 abs(self.radius - other.radius) < 1e-9 and
                 abs(self.height - other.height) < 1e-9 and
@@ -103,11 +95,10 @@ class GalaxyDistributionParameters:
         )
 
     def __repr__(self):
-        return f"GalaxyDistributionParameters(numParticles={self.nbParticles}, radius={self.radius}, height={self.height})"
+        return f"GalaxyDistributionParameters(radius={self.radius}, height={self.height})"
 
     def toCpp(self):
         cpp = engine.GalaxyDistributionParameters()
-        cpp.nbParticles = self.nbParticles
         cpp.totalMass = self.totalMass
         cpp.radius = self.radius
         cpp.height = self.height
@@ -121,7 +112,6 @@ class GalaxyDistributionParameters:
     @classmethod
     def fromCpp(cls, cpp):
         return cls(
-            nbParticles=cpp.nbParticles,
             totalMass=cpp.totalMass,
             radius=cpp.radius,
             height=cpp.height,
@@ -137,7 +127,10 @@ class GalaxyDistributionParameters:
 class SimulatorParameters:
     name: str = "Untitled Simulation"
     timeStep: float = 0.001
+    nbParticles: int = 5000
     theta: float = 0.5
+    tileSize: int = 16
+    blockSize: int = 256
     seed: int = 0
     device: str = "CPU"
     gravitationalConstant: float = 1.0
@@ -152,14 +145,12 @@ class SimulatorParameters:
 
     @classmethod
     def fromDict(cls, data: dict):
-        if data is None:
-            return cls()
         data = dict(data)
         basic = data.get("basicDistributionParameters")
-        if basic is not None:
+        if isinstance(basic, dict):
             data["basicDistributionParameters"] = basic if isinstance(basic, BasicDistributionParameters) else BasicDistributionParameters.fromDict(basic)
         galaxy = data.get("galaxyDistributionParameters")
-        if galaxy is not None:
+        if isinstance(galaxy, dict):
             data["galaxyDistributionParameters"] = galaxy if isinstance(galaxy, GalaxyDistributionParameters) else GalaxyDistributionParameters.fromDict(galaxy)
         return cls(**data)
 
@@ -167,6 +158,7 @@ class SimulatorParameters:
         return {
             "name": self.name,
             "timeStep": self.timeStep,
+            "nbParticles": self.nbParticles,
             "theta": self.theta,
             "seed": self.seed,
             "device": self.device,
@@ -187,6 +179,7 @@ class SimulatorParameters:
         mainEquality = (
                 self.name == other.name and
                 abs(self.timeStep - other.timeStep) < 1e-9 and
+                self.nbParticles == other.nbParticles and
                 abs(self.theta - other.theta) < 1e-9 and
                 self.seed == other.seed and
                 self.device == other.device and
@@ -206,15 +199,13 @@ class SimulatorParameters:
             return self.basicDistributionParameters == other.basicDistributionParameters
 
     def __repr__(self):
-        distributionType = self.galaxyDistributionParameters if self.distributionType.upper() == "GALAXY" else self.basicDistributionParameters
-        nbParticles = distributionType.nbParticles if distributionType else 0
-        return f"SimulatorParameters(name='{self.name}', seed={self.seed}, device={self.device}, distribution={self.distributionType}, particles={nbParticles})"
-
+        return f"SimulatorParameters(name='{self.name}', seed={self.seed}, device={self.device}, distribution={self.distributionType}, particles={self.nbParticles})"
 
     def toCpp(self):
         cpp = engine.SimulatorParameters()
         cpp.name = self.name
         cpp.timeStep = self.timeStep
+        cpp.nbParticles = self.nbParticles
         cpp.theta = self.theta
         cpp.seed = self.seed
         cpp.device = self.device.lower()
@@ -236,6 +227,7 @@ class SimulatorParameters:
         return cls(
             name = cpp.name,
             timeStep = cpp.timeStep,
+            nbParticles = cpp.nbParticles,
             theta = cpp.theta,
             seed = cpp.seed,
             device = cpp.device,

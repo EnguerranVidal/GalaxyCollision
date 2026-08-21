@@ -2,7 +2,7 @@
 #include "particles/ParticleGroup.h"
 
 
-BarnesHutCalculator::BarnesHutCalculator(float gravitationalConstant, float theta): Calculator(gravitationalConstant), theta(theta) {}
+BarnesHutCalculator::BarnesHutCalculator(float gravitationalConstant, float theta, int blockSize): Calculator(gravitationalConstant), theta(theta), blockSize(blockSize) {}
 
 std::vector<Vector3> BarnesHutCalculator::computeAccelerations(const ParticleGroup& particles)
 {

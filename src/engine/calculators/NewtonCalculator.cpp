@@ -9,7 +9,7 @@
 #include <stdexcept>
 
 
-NewtonCalculator::NewtonCalculator(float gravitationalConstant): Calculator(gravitationalConstant) {}
+NewtonCalculator::NewtonCalculator(float gravitationalConstant, int tileSize): Calculator(gravitationalConstant), tileSize(tileSize) {}
 
 std::vector<Vector3> NewtonCalculator::computeAccelerations(const ParticleGroup& particles)
 {
@@ -18,7 +18,7 @@ std::vector<Vector3> NewtonCalculator::computeAccelerations(const ParticleGroup&
     {
         if (!galaxy_cuda::isCudaAvailable())
             throw std::runtime_error("GPU device requested but no CUDA device is available");
-        return galaxy_cuda::computeNewtonAccelerationsCuda(particles.positions, particles.masses, gravitationalConstant,softening);
+        return galaxy_cuda::computeNewtonAccelerationsCuda(particles.positions, particles.masses, gravitationalConstant, softening, tileSize);
     }
 #endif
 

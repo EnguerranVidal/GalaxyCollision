@@ -3,7 +3,6 @@
 
 struct GalaxyDistributionParameters
 {
-    int nbParticles = 5000;
     float totalMass = 1000.0f;
     float radius = 15.0f;
     float height = 2.0f;

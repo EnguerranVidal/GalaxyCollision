@@ -28,30 +28,29 @@ bool isCudaAvailable()
 }
 
 
-constexpr int TILE_SIZE = 32;
-
 __global__ void newtonForceTiledKernel(
     const float3* __restrict__ positions,
     const float*  __restrict__ masses,
     float3*       __restrict__ accelerations,
     int   n,
     float G,
-    float softening2)
+    float softening2,
+    const int tileSize)
 {
-    __shared__ float3 shPos[TILE_SIZE];
-    __shared__ float  shMass[TILE_SIZE];
+    __shared__ float3 shPos[tileSize];
+    __shared__ float  shMass[tileSize];
 
-    const int i = blockIdx.x * TILE_SIZE + threadIdx.x;
+    const int i = blockIdx.x * tileSize + threadIdx.x;
     float3 acc = make_float3(0.f, 0.f, 0.f);
     float3 pi  = (i < n) ? positions[i] : make_float3(0.f, 0.f, 0.f);
 
     // Number of tiles needed to cover all particles
-    const int numTiles = (n + TILE_SIZE - 1) / TILE_SIZE;
+    const int numTiles = (n + tileSize - 1) / tileSize;
 
     for (int tile = 0; tile < numTiles; ++tile)
     {
         // Load one tile of source particles into shared memory
-        const int j = tile * TILE_SIZE + threadIdx.x;
+        const int j = tile * tileSize + threadIdx.x;
         if (j < n)
         {
             shPos[threadIdx.x]  = positions[j];
@@ -66,9 +65,9 @@ __global__ void newtonForceTiledKernel(
         if (i < n)
         {
             #pragma unroll
-            for (int k = 0; k < TILE_SIZE; ++k)
+            for (int k = 0; k < tileSize; ++k)
             {
-                const int jj = tile * TILE_SIZE + k;
+                const int jj = tile * tileSize + k;
                 if (jj >= n || jj == i) continue;
 
                 const float3 pj = shPos[k];
@@ -98,7 +97,8 @@ std::vector<Vector3> computeNewtonAccelerationsCuda(
     const std::vector<Vector3>& positions,
     const std::vector<float>& masses,
     float gravitationalConstant,
-    float softening)
+    float softening,
+    const int tileSize)
 {
     const int n = static_cast<int>(positions.size());
     if (n == 0)
@@ -124,9 +124,9 @@ std::vector<Vector3> computeNewtonAccelerationsCuda(
     CUDA_CHECK(cudaMemcpy(dPos,  hPos.data(),   n * sizeof(float3), cudaMemcpyHostToDevice));
     CUDA_CHECK(cudaMemcpy(dMass, masses.data(), n * sizeof(float),  cudaMemcpyHostToDevice));
 
-    const int blocks = (n + TILE_SIZE - 1) / TILE_SIZE;
-    newtonForceTiledKernel<<<blocks, TILE_SIZE>>>(
-        dPos, dMass, dAcc, n, gravitationalConstant, softening2);
+    const int blocks = (n + tileSize - 1) / tileSize;
+    newtonForceTiledKernel<<<blocks, tileSize>>>(
+        dPos, dMass, dAcc, n, gravitationalConstant, softening2, tileSize);
 
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
