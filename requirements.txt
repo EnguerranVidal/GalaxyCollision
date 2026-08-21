@@ -1,6 +1,5 @@
-cupy
-imageio
-matplotlib
 numpy
 pybind11
+PyOpenGL
 PyQt5
+pyqtdarktheme
