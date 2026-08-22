@@ -5,28 +5,21 @@
 
 namespace galaxy_cuda
 {
-    std::vector<Vector3> computeBarnesHutAccelerationsCuda(
+    std::vector<Vector3> computeBarnesHutStepCuda(
         const std::vector<Vector3>& positions,
-        const std::vector<Vector3>& nodeCenterOfMass,
-        const std::vector<float>&   nodeMass,
+        const std::vector<float>&   particleMasses,
         const std::vector<float>&   nodeHalfSize,
-        const std::vector<int>&     nodeChildren,
+        const std::vector<int>&     nodeDepth,
+        const std::vector<int>&     nodeChildren,   // node*8 + child, EMPTY=-1
         const std::vector<int>&     nodeParticle,
         const std::vector<bool>&    nodeHasChildren,
         int   nodeCount,
+        int   maxDepth,
         float gravitationalConstant,
         float theta,
-        float softening);
+        float softening,
+        int   blockSize = 256);
 
-    void computeMassPropertiesCuda(
-        const std::vector<Vector3>& positions,
-        const std::vector<float>&   masses,
-        const std::vector<int>&     nodeDepth,
-        const std::vector<int>&     nodeParticle,
-        const std::vector<int>&     nodeChildren,
-        const std::vector<bool>&    nodeHasChildren,
-        int nodeCount,
-        int maxDepth,
-        std::vector<float>&   nodeMass,
-        std::vector<Vector3>& nodeCenterOfMass);
+    void releaseBarnesHutCudaBuffers();
+
 }

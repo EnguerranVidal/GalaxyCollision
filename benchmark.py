@@ -16,7 +16,7 @@ REPEATS = 10
 WARMUP = 3
 THETA = 1.0
 G = 1.0
-NEWTON_MAX = 50000
+NEWTON_MAX = 10000
 SEED = 0
 SAVE_PATH = "benchmark_gpu_cpu.png"
 
