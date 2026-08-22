@@ -11,22 +11,23 @@ constexpr float PI = std::numbers::pi_v<float>;
 ParticleGroup GalaxyDistribution::generate(const SimulatorParameters& parameters)
 {
     const auto& p = parameters.galaxyDistributionParameters;
+    const int nbParticles = parameters.nbParticles;
     std::mt19937 generator(parameters.seed);
     std::vector<Vector3> positions;
     std::vector<Vector3> velocities;
     std::vector<float> masses;
-    positions.reserve(p.nbParticles);
-    velocities.reserve(p.nbParticles);
-    masses.reserve(p.nbParticles);
-    generateDisk(p, generator, positions, velocities, masses);
-    generateBulge(p, generator, positions, velocities, masses);
-    generateHalo(p, generator, positions, velocities, masses);
+    positions.reserve(nbParticles);
+    velocities.reserve(nbParticles);
+    masses.reserve(nbParticles);
+    generateDisk(p, nbParticles, generator, positions, velocities, masses);
+    generateBulge(p, nbParticles, generator, positions, velocities, masses);
+    generateHalo(p, nbParticles,generator, positions, velocities, masses);
     return createParticleGroup(positions, velocities, masses, parameters.device);
 }
 
-void GalaxyDistribution::generateDisk(const GalaxyDistributionParameters& p, std::mt19937& generator, std::vector<Vector3>& positions, std::vector<Vector3>& velocities, std::vector<float>& masses)
+void GalaxyDistribution::generateDisk(const GalaxyDistributionParameters& p, int nbParticles, std::mt19937& generator, std::vector<Vector3>& positions, std::vector<Vector3>& velocities, std::vector<float>& masses)
 {
-    int nbDisk = static_cast<int>(static_cast<float>(p.nbParticles) * (1.0f - p.bulgeFraction - p.haloFraction));
+    int nbDisk = static_cast<int>(static_cast<float>(nbParticles) * (1.0f - p.bulgeFraction - p.haloFraction));
     std::exponential_distribution<float> exponential(1.0f);
     std::uniform_real_distribution<float> thetaDistribution(0.0f, 2.0f * PI);
     std::normal_distribution<float> normal(0.0f, 1.0f);
@@ -51,9 +52,9 @@ void GalaxyDistribution::generateDisk(const GalaxyDistributionParameters& p, std
     }
 }
 
-void GalaxyDistribution::generateBulge(const GalaxyDistributionParameters& p, std::mt19937& generator, std::vector<Vector3>& positions, std::vector<Vector3>& velocities, std::vector<float>& masses)
+void GalaxyDistribution::generateBulge(const GalaxyDistributionParameters& p, int nbParticles, std::mt19937& generator, std::vector<Vector3>& positions, std::vector<Vector3>& velocities, std::vector<float>& masses)
 {
-    int nbBulge = static_cast<int>(static_cast<float>(p.nbParticles) * p.bulgeFraction);
+    int nbBulge = static_cast<int>(static_cast<float>(nbParticles) * p.bulgeFraction);
     std::uniform_real_distribution<float> uniform(0.01f, 1.0f);
     std::uniform_real_distribution<float> cosDistribution(-1.0f, 1.0f);
     std::uniform_real_distribution<float> phiDistribution(0.0f, 2.0f * PI);
@@ -73,9 +74,9 @@ void GalaxyDistribution::generateBulge(const GalaxyDistributionParameters& p, st
     }
 }
 
-void GalaxyDistribution::generateHalo(const GalaxyDistributionParameters& p, std::mt19937& generator, std::vector<Vector3>& positions, std::vector<Vector3>& velocities, std::vector<float>& masses)
+void GalaxyDistribution::generateHalo(const GalaxyDistributionParameters& p, int nbParticles, std::mt19937& generator, std::vector<Vector3>& positions, std::vector<Vector3>& velocities, std::vector<float>& masses)
 {
-    int nbHalo = p.nbParticles - static_cast<int>(static_cast<float>(p.nbParticles) * (1.0f - p.bulgeFraction - p.haloFraction)) - static_cast<int>(static_cast<float>(p.nbParticles) * p.bulgeFraction);
+    int nbHalo = nbParticles - static_cast<int>(static_cast<float>(nbParticles) * (1.0f - p.bulgeFraction - p.haloFraction)) - static_cast<int>(static_cast<float>(nbParticles) * p.bulgeFraction);
     std::exponential_distribution<float> exponential(1.0f);
     std::uniform_real_distribution<float> cosDistribution(-1.0f, 1.0f);
     std::uniform_real_distribution<float> phiDistribution(0.0f, 2.0f * PI);

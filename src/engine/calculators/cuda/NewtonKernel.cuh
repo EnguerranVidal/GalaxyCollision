@@ -9,6 +9,8 @@ namespace galaxy_cuda
         const std::vector<Vector3>& positions,
         const std::vector<float>& masses,
         float gravitationalConstant,
-        float softening);
+        float softening,
+        int tileSize);
+
     bool isCudaAvailable();
 }

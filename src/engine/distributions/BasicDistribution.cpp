@@ -6,6 +6,7 @@
 ParticleGroup BasicDistribution::generate(const SimulatorParameters& parameters)
 {
     const auto& distributionParameters = parameters.basicDistributionParameters;
+    const int nbParticles = parameters.nbParticles;
     std::mt19937 generator(parameters.seed);
     std::uniform_real_distribution<float> positionDistribution(-1.0f, 1.0f);
     std::uniform_real_distribution<float> massDistribution(distributionParameters.massMinimum, distributionParameters.massMaximum);
@@ -13,10 +14,10 @@ ParticleGroup BasicDistribution::generate(const SimulatorParameters& parameters)
     std::vector<Vector3> positions;
     std::vector<Vector3> velocities;
     std::vector<float> masses;
-    positions.reserve(distributionParameters.nbParticles);
-    velocities.reserve(distributionParameters.nbParticles);
-    masses.reserve(distributionParameters.nbParticles);
-    for(int i = 0; i < distributionParameters.nbParticles; i++)
+    positions.reserve(nbParticles);
+    velocities.reserve(nbParticles);
+    masses.reserve(nbParticles);
+    for(int i = 0; i < nbParticles; i++)
     {
         positions.emplace_back(
             positionDistribution(generator) * distributionParameters.positionScale,

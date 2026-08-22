@@ -4,8 +4,6 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
-#include <cmath>
-
 
 namespace galaxy_cuda
 {
@@ -27,6 +25,7 @@ bool isCudaAvailable()
     return (err == cudaSuccess && count > 0);
 }
 
+constexpr int MAX_TILE_SIZE = 32;
 
 __global__ void newtonForceTiledKernel(
     const float3* __restrict__ positions,
@@ -35,36 +34,41 @@ __global__ void newtonForceTiledKernel(
     int   n,
     float G,
     float softening2,
-    const int tileSize)
+    const int tileSizeIn)
 {
-    __shared__ float3 shPos[tileSize];
-    __shared__ float  shMass[tileSize];
+    __shared__ float3 shPos[MAX_TILE_SIZE];
+    __shared__ float  shMass[MAX_TILE_SIZE];
+
+    int tileSize = tileSizeIn;
+    if (tileSize < 1) tileSize = 1;
+    if (tileSize > MAX_TILE_SIZE) tileSize = MAX_TILE_SIZE;
 
     const int i = blockIdx.x * tileSize + threadIdx.x;
     float3 acc = make_float3(0.f, 0.f, 0.f);
     float3 pi  = (i < n) ? positions[i] : make_float3(0.f, 0.f, 0.f);
 
-    // Number of tiles needed to cover all particles
     const int numTiles = (n + tileSize - 1) / tileSize;
 
     for (int tile = 0; tile < numTiles; ++tile)
     {
-        // Load one tile of source particles into shared memory
         const int j = tile * tileSize + threadIdx.x;
-        if (j < n)
+        if (threadIdx.x < tileSize)
         {
-            shPos[threadIdx.x]  = positions[j];
-            shMass[threadIdx.x] = masses[j];
-        }
-        else
-        {
-            shPos[threadIdx.x]  = make_float3(0.f, 0.f, 0.f);
-            shMass[threadIdx.x] = 0.f;
+            if (j < n)
+            {
+                shPos[threadIdx.x]  = positions[j];
+                shMass[threadIdx.x] = masses[j];
+            }
+            else
+            {
+                shPos[threadIdx.x]  = make_float3(0.f, 0.f, 0.f);
+                shMass[threadIdx.x] = 0.f;
+            }
         }
         __syncthreads();
+
         if (i < n)
         {
-            #pragma unroll
             for (int k = 0; k < tileSize; ++k)
             {
                 const int jj = tile * tileSize + k;
@@ -74,7 +78,7 @@ __global__ void newtonForceTiledKernel(
                 const float  dx = pj.x - pi.x;
                 const float  dy = pj.y - pi.y;
                 const float  dz = pj.z - pi.z;
-                const float  r2 = dx*dx + dy*dy + dz*dz + softening2;
+                const float  r2 = dx * dx + dy * dy + dz * dz + softening2;
 
                 const float inv_r  = rsqrtf(r2);
                 const float inv_r3 = inv_r * inv_r * inv_r;
@@ -98,7 +102,7 @@ std::vector<Vector3> computeNewtonAccelerationsCuda(
     const std::vector<float>& masses,
     float gravitationalConstant,
     float softening,
-    const int tileSize)
+    int tileSize)
 {
     const int n = static_cast<int>(positions.size());
     if (n == 0)
@@ -106,6 +110,10 @@ std::vector<Vector3> computeNewtonAccelerationsCuda(
 
     if (static_cast<int>(masses.size()) != n)
         throw std::runtime_error("positions and masses size mismatch");
+
+    int tile = tileSize;
+    if (tile < 1) tile = 1;
+    if (tile > MAX_TILE_SIZE) tile = MAX_TILE_SIZE;
 
     const float softening2 = softening * softening;
 
@@ -124,9 +132,9 @@ std::vector<Vector3> computeNewtonAccelerationsCuda(
     CUDA_CHECK(cudaMemcpy(dPos,  hPos.data(),   n * sizeof(float3), cudaMemcpyHostToDevice));
     CUDA_CHECK(cudaMemcpy(dMass, masses.data(), n * sizeof(float),  cudaMemcpyHostToDevice));
 
-    const int blocks = (n + tileSize - 1) / tileSize;
-    newtonForceTiledKernel<<<blocks, tileSize>>>(
-        dPos, dMass, dAcc, n, gravitationalConstant, softening2, tileSize);
+    const int blocks = (n + tile - 1) / tile;
+    newtonForceTiledKernel<<<blocks, tile>>>(
+        dPos, dMass, dAcc, n, gravitationalConstant, softening2, tile);
 
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
