@@ -8,5 +8,4 @@ PYBIND11_MODULE(engine, m)
     bindParameters(m);
     bindCalculator(m);
     bindIntegrator(m);
-    bindDistribution(m);
 }

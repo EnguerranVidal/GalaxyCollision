@@ -7,7 +7,6 @@ target_include_directories(nbody_engine
 
 add_subdirectory(particles)
 add_subdirectory(calculators)
-add_subdirectory(distributions)
 add_subdirectory(integrators)
 add_subdirectory(parameters)
 add_subdirectory(math)
