@@ -5,7 +5,7 @@ from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
 
 import engine
 from src.gui.parameters import *
-
+from src.gui.distributions import *
 
 class NBodySimulator(QObject):
     positionsReady = pyqtSignal(dict)
@@ -18,7 +18,6 @@ class NBodySimulator(QObject):
         self.parameters = parameters
         self.cppParameters = None
         self.particles = None
-        self.distribution = None
         self.calculator = None
         self.integrator = None
         self.isRunning = False
@@ -27,21 +26,10 @@ class NBodySimulator(QObject):
 
     def initialize(self):
         self.cppParameters = self.parameters.toCpp()
-        self.distribution = self._createDistribution(self.cppParameters)
         self.calculator = self._createCalculator(self.cppParameters)
         self.integrator = self._createIntegrator(self.cppParameters)
-        self.particles = self.distribution.generate(self.cppParameters)
+        self.particles = generate(self.parameters)
         self.simulationTime = 0.0
-
-    @staticmethod
-    def _createDistribution(parameters: engine.SimulatorParameters):
-        distributionType = parameters.distributionType.upper()
-        if distributionType == "GALAXY":
-            distribution = engine.GalaxyDistribution()
-        else:
-            distribution = engine.BasicDistribution()
-        return distribution
-
 
     @staticmethod
     def _createCalculator(parameters: engine.SimulatorParameters):
