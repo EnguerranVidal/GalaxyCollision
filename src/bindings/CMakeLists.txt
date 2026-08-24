@@ -7,7 +7,6 @@ pybind11_add_module(
         bindParameters.cpp
         bindCalculator.cpp
         bindIntegrator.cpp
-        bindDistribution.cpp
 )
 
 
