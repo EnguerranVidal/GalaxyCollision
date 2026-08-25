@@ -7,7 +7,7 @@ from PyQt5.QtCore import QUrl, QTimer, Qt, QThread, Q_ARG, QMetaObject, pyqtSlot
 from PyQt5.QtGui import QIcon, QDesktopServices
 from PyQt5.QtWidgets import *
 
-from src.gui.simulator import NBodySimulator
+from src.gui.simulator import NBodySimulator, State
 from src.gui.parameters import SimulatorParameters
 from src.gui.configEditor import SimulationConfigEditorDock
 from src.gui.visualizers.view3d import Universe3dViewWidget
@@ -102,9 +102,10 @@ class MainWindow(QMainWindow):
     def _onSimulationFinished(self):
         self.statusBar().showMessage("Simulation finished", 3000)
 
-    def _onPositionsUpdated(self, groups: dict):
+    def _onPositionsUpdated(self, state: State):
         if self.simulation3dWidget:
-            self.simulation3dWidget.updateData(groups)
+            self.simulation3dWidget.updateData(state.positions)
+            self.simulation3dWidget.setSimulationTime(state.time)
             self._updateFps()
 
     def _checkEnvironment(self):
@@ -154,9 +155,6 @@ class MainWindow(QMainWindow):
         self.fpsLabel.setStyleSheet('border: 0;')
         self.statusBar().addPermanentWidget(self.fpsLabel)
         self.statusBar().showMessage('Ready')
-        self.statusDateTimer = QTimer()
-        self.statusDateTimer.timeout.connect(self._updateStatus)
-        self.statusDateTimer.start(1000)
 
     def _updateFps(self):
         now = time.perf_counter()
@@ -164,9 +162,6 @@ class MainWindow(QMainWindow):
         self.lastUpdate = now
         self.avgFps = self.avgFps * 0.8 + fps * 0.2
         self.fpsLabel.setText(f'FPS : {self.avgFps:.1f}')
-
-    def _updateStatus(self):
-        self.statusBar().showMessage(f'Time: {getattr(self.nBodySimulator, "time", 0):.1f}s')
 
     def closeEvent(self, event):
         if self.nBodySimulator and self.nBodySimulator.isRunning:

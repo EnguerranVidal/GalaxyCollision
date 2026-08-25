@@ -1,8 +1,9 @@
+from typing import Dict
 import numpy as np
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
 from OpenGL.GL import *
-from OpenGL.GL.shaders import compileProgram, compileShader
+from OpenGL.GL.shaders import compileShader
 
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import *
@@ -288,6 +289,11 @@ class Universe3dViewWidget(QOpenGLWidget):
         self.lastPosX, self.lastPosY = 0, 0
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self._showContextMenu)
+        self.timeOverlay = QLabel(self)
+        self.timeOverlay.setText("Time: 0.000")
+        self.timeOverlay.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        self.timeOverlay.adjustSize()
+        self._placeTimeOverlay()
 
     def initializeGL(self):
         glClearColor(0, 0, 0, 1.0)
@@ -314,13 +320,23 @@ class Universe3dViewWidget(QOpenGLWidget):
         self.objectsRenderer.renderAll(pointSize=4.0)
         self.gridRenderer.render(self.camera.zoom)
 
-    def updateData(self, positions: dict):
+    def updateData(self, positions: Dict[str, np.ndarray]):
         self.pendingObjectBufferUpdates.clear()
         for groupIndex, positionArray in positions.items():
             if groupIndex not in self.groupColors:
                 self.groupColors[groupIndex] = (0.9, 0.7, 0.3, 0.95)
             self.pendingObjectBufferUpdates[groupIndex] = positionArray
         self.update()
+
+    def setSimulationTime(self, t: float):
+        self.timeOverlay.setText(f"Time: {t:.3f}")
+        self.timeOverlay.adjustSize()
+
+    def _placeTimeOverlay(self):
+        margin = 12
+        x, y = self.width() - self.timeOverlay.width() - margin, self.height() - self.timeOverlay.height() - margin
+        self.timeOverlay.move(max(0, x), max(0, y))
+        self.timeOverlay.raise_()
 
     def _uploadPendingObjectBuffers(self):
         if not self.pendingObjectBufferUpdates:
@@ -369,3 +385,7 @@ class Universe3dViewWidget(QOpenGLWidget):
         glLoadIdentity()
         gluPerspective(45, w / max(h, 1), 0.1, 2000 * np.sqrt(2))
         glMatrixMode(GL_MODELVIEW)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._placeTimeOverlay()

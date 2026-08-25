@@ -1,4 +1,6 @@
 from __future__ import annotations
+from dataclasses import dataclass, field
+from typing import Dict
 import time
 import numpy as np
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
@@ -7,8 +9,9 @@ import engine
 from src.gui.parameters import *
 from src.gui.distributions import *
 
+
 class NBodySimulator(QObject):
-    positionsReady = pyqtSignal(dict)
+    positionsReady = pyqtSignal(object)
     simulationFinished = pyqtSignal()
 
     MAX_FPS = 30.0
@@ -67,7 +70,8 @@ class NBodySimulator(QObject):
             self.simulationTime += self.parameters.timeStep
             now = time.perf_counter()
             if now >= nextFrame:
-                self.positionsReady.emit({"default": self._positionsAsArray()})
+                state = State(time=self.simulationTime, positions={"default": self._positionsAsArray()})
+                self.positionsReady.emit(state)
                 nextFrame = now + self.frameInterval
             if not self.cppParameters.endless and self.simulationTime >= self.cppParameters.maxTime:
                 break
@@ -83,7 +87,8 @@ class NBodySimulator(QObject):
             self.initialize()
         self.integrator.step(self.particles, self.calculator)
         self.simulationTime += self.cppParameters.timeStep
-        self.positionsReady.emit({"default": self._positionsAsArray()})
+        state = State(time=self.simulationTime, positions={"default": self._positionsAsArray()})
+        self.positionsReady.emit(state)
 
     @pyqtSlot()
     def stop(self):
@@ -94,3 +99,9 @@ class NBodySimulator(QObject):
         if not positions:
             return np.zeros((0, 3), dtype=np.float32)
         return np.asarray([[position.x, position.y, position.z] for position in positions], dtype=np.float32)
+
+
+@dataclass
+class State:
+    time: float = 0.0
+    positions: Dict[str, np.ndarray] = field(default_factory=dict)
