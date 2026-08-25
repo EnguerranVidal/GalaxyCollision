@@ -70,7 +70,7 @@ class NBodySimulator(QObject):
             self.simulationTime += self.parameters.timeStep
             now = time.perf_counter()
             if now >= nextFrame:
-                state = State(time=self.simulationTime, positions={"default": self._positionsAsArray()})
+                state = State(time=self.simulationTime, positions={"default": self._positionsAsArray()}, massCenter=self._massCenterAsArray())
                 self.positionsReady.emit(state)
                 nextFrame = now + self.frameInterval
             if not self.cppParameters.endless and self.simulationTime >= self.cppParameters.maxTime:
@@ -87,7 +87,7 @@ class NBodySimulator(QObject):
             self.initialize()
         self.integrator.step(self.particles, self.calculator)
         self.simulationTime += self.cppParameters.timeStep
-        state = State(time=self.simulationTime, positions={"default": self._positionsAsArray()})
+        state = State(time=self.simulationTime, positions={"default": self._positionsAsArray()}, massCenter=self._massCenterAsArray())
         self.positionsReady.emit(state)
 
     @pyqtSlot()
@@ -100,8 +100,15 @@ class NBodySimulator(QObject):
             return np.zeros((0, 3), dtype=np.float32)
         return np.asarray([[position.x, position.y, position.z] for position in positions], dtype=np.float32)
 
+    def _massCenterAsArray(self):
+        massCenter, _ = self.particles.massCenter()
+        if not massCenter:
+            return np.zeros(3, dtype=np.float32)
+        return np.asarray([massCenter.x, massCenter.y, massCenter.z], dtype=np.float32)
+
 
 @dataclass
 class State:
     time: float = 0.0
     positions: Dict[str, np.ndarray] = field(default_factory=dict)
+    massCenter: np.ndarray = field(default_factory=lambda: np.zeros(3, dtype=np.float32))

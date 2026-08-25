@@ -18,7 +18,7 @@ class MainWindow(QMainWindow):
     def __init__(self, currentDir: str):
         super().__init__()
         self.icons = {}
-        self.settings: Optional[UiSettings] = None
+        self.settings = UiSettings()
         # FOLDER PATHS & SETTINGS
         self.currentDir = currentDir
         self.settingsPath = os.path.join(self.currentDir, 'settings.json')
@@ -51,6 +51,14 @@ class MainWindow(QMainWindow):
         self._restoreWindow()
 
     def _createActions(self):
+        # SHOW BARYCENTER
+        self.showBarycenterAction = QAction('&Barycenter', self)
+        self.showBarycenterAction.setIcon(self.icons['CENTER_GRAVITY'])
+        self.showBarycenterAction.setStatusTip('Show the Simulation\'s Barycenter')
+        self.showBarycenterAction.setCheckable(True)
+        self.showBarycenterAction.setChecked(self.settings.view.showBarycenter)
+        self.showBarycenterAction.toggled.connect(self._toggleBarycenter)
+        self.showBarycenterAction.setIconVisibleInMenu(False)
         # VISIT GITHUB
         self.githubAction = QAction('&Visit GitHub', self)
         self.githubAction.setIcon(self.icons['GITHUB'])
@@ -71,6 +79,9 @@ class MainWindow(QMainWindow):
         ### FILE MENU ###
         self.fileMenu = self.menuBar.addMenu('&File')
         self.fileMenu.addAction(self.quitAction)
+        ### VIEW MENU ###
+        self.viewMenu = self.menuBar.addMenu('&View')
+        self.viewMenu.addAction(self.showBarycenterAction)
         ### HELP MENU ###
         self.helpMenu = self.menuBar.addMenu('&Help')
         self.helpMenu.addAction(self.githubAction)
@@ -78,6 +89,7 @@ class MainWindow(QMainWindow):
 
     def _createIcons(self):
         self.iconPath = os.path.join(self.currentDir, f'src/assets/icons')
+        self.icons['CENTER_GRAVITY'] = QIcon(os.path.join(self.iconPath, 'center-gravity.png'))
         self.icons['BUG'] = QIcon(os.path.join(self.iconPath, 'bug.png'))
         self.icons['GITHUB'] = QIcon(os.path.join(self.iconPath, 'github.png'))
 
@@ -104,8 +116,7 @@ class MainWindow(QMainWindow):
 
     def _onPositionsUpdated(self, state: State):
         if self.simulation3dWidget:
-            self.simulation3dWidget.updateData(state.positions)
-            self.simulation3dWidget.setSimulationTime(state.time)
+            self.simulation3dWidget.updateState(state)
             self._updateFps()
 
     def _checkEnvironment(self):
@@ -139,6 +150,12 @@ class MainWindow(QMainWindow):
         screenCenter = QDesktopWidget().availableGeometry().center()
         frameGeometry.moveCenter(screenCenter)
         self.move(frameGeometry.topLeft())
+
+    def _toggleBarycenter(self, checked: bool):
+        self.settings.view.showBarycenter = checked
+        self.saveSettings()
+        self.simulation3dWidget.setShowBarycenter(checked)
+
 
     @staticmethod
     def _openGithub():

@@ -45,10 +45,7 @@ float ParticleGroup::kineticEnergy() const
     return energy;
 }
 
-void ParticleGroup::massCenter(
-    Vector3& position,
-    Vector3& velocity
-) const
+void ParticleGroup::massCenter(Vector3& position, Vector3& velocity) const
 {
     float totalMass = 0.0f;
     position = Vector3();

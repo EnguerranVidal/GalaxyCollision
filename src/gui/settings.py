@@ -33,17 +33,31 @@ class WindowSettings:
     def toDict(self):
         return {"MAXIMIZED": self.maximized, "GEOMETRY": self.geometry.toDict()}
 
+@dataclass
+class ViewSettings:
+    showBarycenter: bool = False
+
+    @classmethod
+    def fromDict(cls, data=None):
+        data = data or {}
+        return cls(bool(data.get("SHOW_BARYCENTER", False)))
+
+    def toDict(self):
+        return {"SHOW_BARYCENTER": self.showBarycenter}
+
 
 @dataclass
 class UiSettings:
     window: WindowSettings = field(default_factory=WindowSettings)
     parameters: SimulatorParameters = field(default_factory=SimulatorParameters)
+    view: ViewSettings = field(default_factory=ViewSettings)
 
     @classmethod
     def fromDict(cls, data: dict | None):
         data = data or {}
         return cls(window=WindowSettings.fromDict(data.get("WINDOW")),
-                   parameters=SimulatorParameters.fromDict(data.get("PARAMETERS")))
+                   parameters=SimulatorParameters.fromDict(data.get("PARAMETERS")),
+                   view=ViewSettings.fromDict(data.get("VIEW")))
 
     def toDict(self):
-        return {"WINDOW": self.window.toDict(), "PARAMETERS": self.parameters.toDict()}
+        return {"WINDOW": self.window.toDict(), "PARAMETERS": self.parameters.toDict(), "VIEW": self.view.toDict()}

@@ -8,6 +8,9 @@ from OpenGL.GL.shaders import compileShader
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import *
 
+from src.gui.settings import ViewSettings
+from src.gui.simulator import State
+
 
 class Camera:
     def __init__(self):
@@ -243,8 +246,7 @@ class GridRenderer:
         return f"{value:.1f}"
 
     @staticmethod
-    def _drawWorldLabel(x, y, z, text, viewModel, viewProjection, viewport, alpha=1.0, color=(0.75, 0.80, 0.85),
-                        baseAlpha=1.0):
+    def _drawWorldLabel(x, y, z, text, viewModel, viewProjection, viewport, alpha=1.0, color=(0.75, 0.80, 0.85), baseAlpha=1.0):
         xWindow, yWindow, zWindow = gluProject(x, y, z, viewModel, viewProjection, viewport)
         if zWindow <= 0.0 or zWindow >= 1.0:
             return
@@ -281,6 +283,8 @@ class Universe3dViewWidget(QOpenGLWidget):
         glutInit()
         self.setMouseTracking(True)
         self.camera = Camera()
+        self.showBarycenter = False
+        self.massCenter = np.zeros(3, dtype=np.float32)
         self.objectSpotData, self.pendingObjectBufferUpdates = {}, {}
         self.objectsRenderer = ObjectGroupRenderer()
         self.gridRenderer = GridRenderer()
@@ -317,21 +321,35 @@ class Universe3dViewWidget(QOpenGLWidget):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         self.camera.apply()
         glDisable(GL_LIGHTING)
-        self.objectsRenderer.renderAll(pointSize=4.0)
+        for groupIndex in list(self.objectsRenderer.vbos.keys()):
+            if groupIndex == 'barycenter':
+                continue
+            self.objectsRenderer.renderObjectsGroup(groupIndex, pointSize=4.0)
+        if self.showBarycenter:
+            print(self.showBarycenter)
+            if "barycenter" not in self.objectsRenderer.vbos:
+                self.objectsRenderer.createGroup("barycenter", (1.0, 0.15, 0.15, 1.0))
+            self.objectsRenderer.updateGroupPositions("barycenter", self.massCenter.reshape(1, 3))
+            self.objectsRenderer.renderObjectsGroup("barycenter", pointSize=12.0)
         self.gridRenderer.render(self.camera.zoom)
 
-    def updateData(self, positions: Dict[str, np.ndarray]):
+    def updateState(self, state: State):
         self.pendingObjectBufferUpdates.clear()
-        for groupIndex, positionArray in positions.items():
+        for groupIndex, positionArray in state.positions.items():
             if groupIndex not in self.groupColors:
                 self.groupColors[groupIndex] = (0.9, 0.7, 0.3, 0.95)
             self.pendingObjectBufferUpdates[groupIndex] = positionArray
-        self.update()
-
-    def setSimulationTime(self, t: float):
-        self.timeOverlay.setText(f"Time: {t:.3f}")
+        self.massCenter = np.asarray(state.massCenter, dtype=np.float32).reshape(3)
+        self.timeOverlay.setText(f"Time: {state.time:.3f}")
         self.timeOverlay.adjustSize()
         self._placeTimeOverlay()
+        self.update()
+
+    def setShowBarycenter(self, enabled: bool):
+        self.showBarycenter = bool(enabled)
+        if not self.showBarycenter and "barycenter" in self.objectsRenderer.counts:
+            self.objectsRenderer.counts["barycenter"] = 0
+        self.update()
 
     def _placeTimeOverlay(self):
         margin = 12
