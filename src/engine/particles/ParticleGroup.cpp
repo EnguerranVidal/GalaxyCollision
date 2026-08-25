@@ -99,3 +99,31 @@ const std::vector<Vector3>& ParticleGroup::getPositions() const {return position
 const std::vector<Vector3>& ParticleGroup::getVelocities() const {return velocities;}
 const std::vector<float>& ParticleGroup::getMasses() const {return masses;}
 const std::string& ParticleGroup::getDevice() const {return device;}
+
+
+void ParticleGroup::copyPositionsTo(float* out, int count) const
+{
+    const int n = std::min(count, nbParticles);
+    for (int i = 0; i < n; ++i) {
+        out[3*i+0] = positions[i].x;
+        out[3*i+1] = positions[i].y;
+        out[3*i+2] = positions[i].z;
+    }
+}
+
+void ParticleGroup::copyVelocitiesTo(float* out, int count) const
+{
+    const int n = std::min(count, nbParticles);
+    for (int i = 0; i < n; ++i) {
+        out[3*i+0] = velocities[i].x;
+        out[3*i+1] = velocities[i].y;
+        out[3*i+2] = velocities[i].z;
+    }
+}
+
+void ParticleGroup::copyMassesTo(float* out, int count) const
+{
+    const int n = std::min(count, nbParticles);
+    for (int i = 0; i < n; ++i)
+        out[i] = masses[i];
+}

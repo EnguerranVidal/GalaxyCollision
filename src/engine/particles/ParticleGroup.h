@@ -28,6 +28,10 @@ public:
     [[nodiscard]] const std::vector<float>& getMasses() const;
     [[nodiscard]] const std::string& getDevice() const;
 
+    void copyPositionsTo(float* out, int count) const;
+    void copyVelocitiesTo(float* out, int count) const;
+    void copyMassesTo(float* out, int count) const;
+
 public:
     std::string device;
     int nbParticles = 0;

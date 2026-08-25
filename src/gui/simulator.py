@@ -95,10 +95,22 @@ class NBodySimulator(QObject):
         self.isRunning = False
 
     def _positionsAsArray(self):
-        positions = self.particles.getPositions()
-        if not positions:
-            return np.zeros((0, 3), dtype=np.float32)
-        return np.asarray([[position.x, position.y, position.z] for position in positions], dtype=np.float32)
+        n = self.particles.getNbParticles()
+        outputArray = np.empty((n, 3), dtype=np.float32)
+        self.particles.copyPositionsTo(outputArray)
+        return outputArray
+
+    def _velocitiesAsArray(self):
+        n = self.particles.getNbParticles()
+        outputArray = np.empty((n, 3), dtype=np.float32)
+        self.particles.copyVelocitiesTo(outputArray)
+        return outputArray
+
+    def _massesAsArray(self):
+        n = self.particles.getNbParticles()
+        outputArray = np.empty(n, dtype=np.float32)
+        self.particles.copyMassesTo(outputArray)
+        return outputArray
 
     def _massCenterAsArray(self):
         massCenter, _ = self.particles.massCenter()
