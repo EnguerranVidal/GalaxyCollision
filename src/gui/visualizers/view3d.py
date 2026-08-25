@@ -331,6 +331,7 @@ class Universe3dViewWidget(QOpenGLWidget):
     def setSimulationTime(self, t: float):
         self.timeOverlay.setText(f"Time: {t:.3f}")
         self.timeOverlay.adjustSize()
+        self._placeTimeOverlay()
 
     def _placeTimeOverlay(self):
         margin = 12
