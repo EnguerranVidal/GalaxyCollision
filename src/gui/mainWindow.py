@@ -41,6 +41,7 @@ class MainWindow(QMainWindow):
         self.simulation3dWidget = Universe3dViewWidget()
         self.stackedSimulationWidget.addWidget(self.simulation3dWidget)
         self.setCentralWidget(self.stackedSimulationWidget)
+        self.simulation3dWidget.setViewSettings(self.settings.view)
         print("Main thread:", QThread.currentThread())
         print("Simulator thread:", self.nBodySimulator.thread())
 
@@ -54,10 +55,18 @@ class MainWindow(QMainWindow):
         # SHOW BARYCENTER
         self.showBarycenterAction = QAction('&Barycenter', self)
         self.showBarycenterAction.setIcon(self.icons['CENTER_GRAVITY'])
-        self.showBarycenterAction.setStatusTip('Show the Simulation\'s Barycenter')
+        self.showBarycenterAction.setStatusTip('Show the Simulation\'s Barycenter.')
         self.showBarycenterAction.setCheckable(True)
         self.showBarycenterAction.setChecked(self.settings.view.showBarycenter)
         self.showBarycenterAction.toggled.connect(self._toggleBarycenter)
+        self.showBarycenterAction.setIconVisibleInMenu(False)
+        # CENTER ON BARYCENTER
+        self.centerOnBarycenterAction = QAction('&Center on Barycentre', self)
+        self.showBarycenterAction.setIcon(self.icons['ARROWS_CENTER'])
+        self.centerOnBarycenterAction.setStatusTip('Center Camera on Barycenter.')
+        self.centerOnBarycenterAction.setCheckable(True)
+        self.centerOnBarycenterAction.setChecked(self.settings.view.centerOnBarycenter)
+        self.centerOnBarycenterAction.toggled.connect(self._toggleCenterOnBarycenter)
         self.showBarycenterAction.setIconVisibleInMenu(False)
         # VISIT GITHUB
         self.githubAction = QAction('&Visit GitHub', self)
@@ -82,6 +91,7 @@ class MainWindow(QMainWindow):
         ### VIEW MENU ###
         self.viewMenu = self.menuBar.addMenu('&View')
         self.viewMenu.addAction(self.showBarycenterAction)
+        self.viewMenu.addAction(self.centerOnBarycenterAction)
         ### HELP MENU ###
         self.helpMenu = self.menuBar.addMenu('&Help')
         self.helpMenu.addAction(self.githubAction)
@@ -89,8 +99,9 @@ class MainWindow(QMainWindow):
 
     def _createIcons(self):
         self.iconPath = os.path.join(self.currentDir, f'src/assets/icons')
-        self.icons['CENTER_GRAVITY'] = QIcon(os.path.join(self.iconPath, 'center-gravity.png'))
+        self.icons['ARROWS_CENTER'] = QIcon(os.path.join(self.iconPath, 'arrows-center.png'))
         self.icons['BUG'] = QIcon(os.path.join(self.iconPath, 'bug.png'))
+        self.icons['CENTER_GRAVITY'] = QIcon(os.path.join(self.iconPath, 'center-gravity.png'))
         self.icons['GITHUB'] = QIcon(os.path.join(self.iconPath, 'github.png'))
 
     @pyqtSlot(SimulatorParameters)
@@ -156,6 +167,10 @@ class MainWindow(QMainWindow):
         self.saveSettings()
         self.simulation3dWidget.setShowBarycenter(checked)
 
+    def _toggleCenterOnBarycenter(self, checked: bool):
+        self.settings.view.centerOnBarycenter = checked
+        self.saveSettings()
+        self.simulation3dWidget.setCenterOnBarycenter(checked)
 
     @staticmethod
     def _openGithub():

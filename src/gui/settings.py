@@ -36,14 +36,18 @@ class WindowSettings:
 @dataclass
 class ViewSettings:
     showBarycenter: bool = False
+    centerOnBarycenter: bool = False
 
     @classmethod
     def fromDict(cls, data=None):
         data = data or {}
-        return cls(bool(data.get("SHOW_BARYCENTER", False)))
+        return cls(
+            showBarycenter=bool(data.get("SHOW_BARYCENTER", False)),
+            centerOnBarycenter=bool(data.get("CENTER_ON_BARYCENTER", False))
+        )
 
     def toDict(self):
-        return {"SHOW_BARYCENTER": self.showBarycenter}
+        return {"SHOW_BARYCENTER": self.showBarycenter, "CENTER_ON_BARYCENTER": self.centerOnBarycenter,}
 
 
 @dataclass
@@ -55,9 +59,9 @@ class UiSettings:
     @classmethod
     def fromDict(cls, data: dict | None):
         data = data or {}
-        return cls(window=WindowSettings.fromDict(data.get("WINDOW")),
-                   parameters=SimulatorParameters.fromDict(data.get("PARAMETERS")),
-                   view=ViewSettings.fromDict(data.get("VIEW")))
+        return cls(window=WindowSettings.fromDict(data.get("WINDOW", WindowSettings())),
+                   parameters=SimulatorParameters.fromDict(data.get("PARAMETERS", SimulatorParameters())),
+                   view=ViewSettings.fromDict(data.get("VIEW", ViewSettings())))
 
     def toDict(self):
         return {"WINDOW": self.window.toDict(), "PARAMETERS": self.parameters.toDict(), "VIEW": self.view.toDict()}

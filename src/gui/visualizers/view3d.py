@@ -284,6 +284,7 @@ class Universe3dViewWidget(QOpenGLWidget):
         self.setMouseTracking(True)
         self.camera = Camera()
         self.showBarycenter = False
+        self.centerOnBarycenter = False
         self.massCenter = np.zeros(3, dtype=np.float32)
         self.objectSpotData, self.pendingObjectBufferUpdates = {}, {}
         self.objectsRenderer = ObjectGroupRenderer()
@@ -320,6 +321,9 @@ class Universe3dViewWidget(QOpenGLWidget):
         self._uploadPendingObjectBuffers()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         self.camera.apply()
+        self.gridRenderer.render(self.camera.zoom)
+        if self.centerOnBarycenter:
+            glTranslatef(-float(self.massCenter[0]), -float(self.massCenter[1]), -float(self.massCenter[2]))
         glDisable(GL_LIGHTING)
         for groupIndex in list(self.objectsRenderer.vbos.keys()):
             if groupIndex == 'barycenter':
@@ -331,7 +335,7 @@ class Universe3dViewWidget(QOpenGLWidget):
                 self.objectsRenderer.createGroup("barycenter", (1.0, 0.15, 0.15, 1.0))
             self.objectsRenderer.updateGroupPositions("barycenter", self.massCenter.reshape(1, 3))
             self.objectsRenderer.renderObjectsGroup("barycenter", pointSize=12.0)
-        self.gridRenderer.render(self.camera.zoom)
+
 
     def updateState(self, state: State):
         self.pendingObjectBufferUpdates.clear()
@@ -349,6 +353,15 @@ class Universe3dViewWidget(QOpenGLWidget):
         self.showBarycenter = bool(enabled)
         if not self.showBarycenter and "barycenter" in self.objectsRenderer.counts:
             self.objectsRenderer.counts["barycenter"] = 0
+        self.update()
+
+    def setCenterOnBarycenter(self, enabled: bool):
+        self.centerOnBarycenter = bool(enabled)
+        self.update()
+
+    def setViewSettings(self, viewSettings: ViewSettings):
+        self.showBarycenter = bool(viewSettings.showBarycenter)
+        self.centerOnBarycenter = bool(viewSettings.centerOnBarycenter)
         self.update()
 
     def _placeTimeOverlay(self):
