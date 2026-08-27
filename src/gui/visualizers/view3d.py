@@ -101,7 +101,7 @@ class Universe3dViewWidget(QOpenGLWidget):
         if self.showBarycenter:
             if "barycenter" not in self.objectsRenderer.vbos:
                 self.objectsRenderer.createGroup("barycenter", (1.0, 0.15, 0.15, 1.0))
-            self.objectsRenderer.updateGroupPositions("barycenter", self.massCenter.reshape(1, 3).astype(np.float32))
+            self.objectsRenderer.renderAll(pointSize=4.0, skip={"barycenter"}, refDistance=max(self.camera.zoom, 0.5), minSize=1.5, maxSize=16.0)
             glUseProgram(self.objectsRenderer.shader)
             glEnable(GL_BLEND)
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)

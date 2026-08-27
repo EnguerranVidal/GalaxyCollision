@@ -16,6 +16,9 @@ class ObjectGroupRenderer:
         self.useVaos = False
         self.locColor = -1
         self.locPointSize = -1
+        self.locRefDistance = -1
+        self.locMinSize = -1
+        self.locMaxSize = -1
 
     def initialize(self):
         with open("src/assets/shaders/objects/object.vert") as f:
@@ -36,6 +39,9 @@ class ObjectGroupRenderer:
         glDeleteShader(fragmentShader)
         self.locColor = glGetUniformLocation(self.shader, "uColor")
         self.locPointSize = glGetUniformLocation(self.shader, "uPointSize")
+        self.locRefDistance = glGetUniformLocation(self.shader, "uRefDistance")
+        self.locMinSize = glGetUniformLocation(self.shader, "uMinSize")
+        self.locMaxSize = glGetUniformLocation(self.shader, "uMaxSize")
         self.useVaos = bool(glGenVertexArrays) and bool(glBindVertexArray)
 
     def createGroup(self, groupIndex: str, color: tuple = (1.0, 1.0, 1.0, 0.9)):
@@ -86,13 +92,19 @@ class ObjectGroupRenderer:
         self._bindGroupBuffer(groupIndex)
         glDrawArrays(GL_POINTS, 0, self.counts[groupIndex])
 
-    def renderAll(self, pointSize: float = 3.0, skip=None):
+    def renderAll(self, pointSize: float = 3.0, skip=None, refDistance: float = None, minSize: float = 1.0, maxSize: float = 12.0):
         skip = skip or set()
+        if refDistance is None:
+            refDistance = pointSize
         glUseProgram(self.shader)
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glEnable(GL_PROGRAM_POINT_SIZE)
         glEnable(GL_POINT_SPRITE)
+        glUniform1f(self.locPointSize, pointSize)
+        glUniform1f(self.locRefDistance, float(refDistance))
+        glUniform1f(self.locMinSize, minSize)
+        glUniform1f(self.locMaxSize, maxSize)
         for groupIndex, count in self.counts.items():
             if count == 0 or groupIndex in skip:
                 continue
