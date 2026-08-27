@@ -6,8 +6,8 @@ import numpy as np
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
 
 import engine
-from src.gui.parameters import *
-from src.gui.distributions import *
+from src.gui.solver.parameters import *
+from src.gui.solver.distributions import *
 
 
 class NBodySimulator(QObject):

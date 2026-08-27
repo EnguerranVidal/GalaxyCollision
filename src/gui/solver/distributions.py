@@ -1,7 +1,7 @@
 import numpy as np
 
 import engine
-from src.gui.parameters import SimulatorParameters
+from src.gui.solver.parameters import SimulatorParameters
 
 
 def toParticleGroup(positions: np.ndarray, velocities: np.ndarray, masses: np.ndarray, device: str) -> engine.ParticleGroup:

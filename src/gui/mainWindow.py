@@ -1,14 +1,13 @@
 import os
 import json
 import time
-from typing import Optional
 
 from PyQt5.QtCore import QUrl, QTimer, Qt, QThread, Q_ARG, QMetaObject, pyqtSlot, QEventLoop
 from PyQt5.QtGui import QIcon, QDesktopServices
 from PyQt5.QtWidgets import *
 
-from src.gui.simulator import NBodySimulator, State
-from src.gui.parameters import SimulatorParameters
+from src.gui.solver.simulator import NBodySimulator, State
+from src.gui.solver.parameters import SimulatorParameters
 from src.gui.configEditor import SimulationConfigEditorDock
 from src.gui.visualizers.view3d import Universe3dViewWidget
 from src.gui.settings import UiSettings, WindowGeometry

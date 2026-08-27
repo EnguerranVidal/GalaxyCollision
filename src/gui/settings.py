@@ -1,7 +1,6 @@
 from dataclasses import asdict, dataclass, field
-from typing import Any
 
-from src.gui.parameters import SimulatorParameters
+from src.gui.solver.parameters import SimulatorParameters
 
 
 @dataclass
