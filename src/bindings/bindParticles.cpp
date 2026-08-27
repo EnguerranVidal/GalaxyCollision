@@ -29,7 +29,6 @@ void bindParticles(py::module_& m)
             {
                 py::buffer_info buf = out.request();
                 const int n = particles.getNbParticles();
-
                 if (buf.ndim == 2)
                 {
                     if (buf.shape[0] < n || buf.shape[1] != 3)
@@ -52,7 +51,6 @@ void bindParticles(py::module_& m)
             {
                 py::buffer_info buf = out.request();
                 const int n = particles.getNbParticles();
-
                 if (buf.ndim == 2)
                 {
                     if (buf.shape[0] < n || buf.shape[1] != 3)

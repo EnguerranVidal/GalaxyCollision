@@ -18,7 +18,7 @@ class Camera:
         self.rotationX = 45.0
         self.rotationY = 225.0
         self.minimumZoom = 1.25
-        self.maximumZoom = 1000.0
+        self.maximumZoom = 5000.0
 
     def apply(self):
         glLoadIdentity()
@@ -53,8 +53,11 @@ class ObjectGroupRenderer:
         self.vbos = {}
         self.colors = {}
         self.counts = {}
+        self.capacities = {}
         self.shader = None
         self.useVaos = False
+        self.locColor = -1
+        self.locPointSize = -1
 
     def initialize(self):
         with open("src/assets/shaders/objects/object.vert") as f:
@@ -73,6 +76,8 @@ class ObjectGroupRenderer:
             raise RuntimeError(f"ObjectGroupRenderer shader failed to link:\n{log}")
         glDeleteShader(vertexShader)
         glDeleteShader(fragmentShader)
+        self.locColor = glGetUniformLocation(self.shader, "uColor")
+        self.locPointSize = glGetUniformLocation(self.shader, "uPointSize")
         self.useVaos = bool(glGenVertexArrays) and bool(glBindVertexArray)
 
     def createGroup(self, groupIndex: str, color: tuple = (1.0, 1.0, 1.0, 0.9)):
@@ -81,6 +86,7 @@ class ObjectGroupRenderer:
         self.vbos[groupIndex] = glGenBuffers(1)
         self.colors[groupIndex] = color
         self.counts[groupIndex] = 0
+        self.capacities[groupIndex] = 0
         if self.useVaos:
             self.vaos[groupIndex] = glGenVertexArrays(1)
             self._configureVao(self.vaos[groupIndex], self.vbos[groupIndex])
@@ -97,43 +103,58 @@ class ObjectGroupRenderer:
     def updateGroupPositions(self, groupIndex: str, positions: np.ndarray):
         if groupIndex not in self.vbos:
             self.createGroup(groupIndex)
-        positions = np.asarray(positions, dtype=np.float32)
+        positions = np.ascontiguousarray(positions, dtype=np.float32)
         if positions.ndim != 2 or positions.shape[1] != 3:
             raise ValueError("Positions must be Nx3 array")
+        nbParticles = positions.shape[0]
+        nbBytes = int(positions.nbytes)
         glBindBuffer(GL_ARRAY_BUFFER, self.vbos[groupIndex])
-        glBufferData(GL_ARRAY_BUFFER, positions.nbytes, positions, GL_DYNAMIC_DRAW)
+        capacity = self.capacities.get(groupIndex, 0)
+        if nbBytes > capacity:
+            new_cap = max(nbBytes, int(capacity * 1.5) if capacity else nbBytes)
+            glBufferData(GL_ARRAY_BUFFER, new_cap, None, GL_DYNAMIC_DRAW)
+            self.capacities[groupIndex] = new_cap
+        else:
+            glBufferData(GL_ARRAY_BUFFER, capacity, None, GL_DYNAMIC_DRAW)
+        glBufferSubData(GL_ARRAY_BUFFER, 0, nbBytes, positions)
         glBindBuffer(GL_ARRAY_BUFFER, 0)
-        self.counts[groupIndex] = len(positions)
+        self.counts[groupIndex] = nbParticles
 
     def renderObjectsGroup(self, groupIndex: str, pointSize: float = 3.0):
         if groupIndex not in self.vbos or self.counts.get(groupIndex, 0) == 0:
             return
+        glUniform4f(self.locColor, *self.colors[groupIndex])
+        glUniform1f(self.locPointSize, pointSize)
+        self._bindGroupBuffer(groupIndex)
+        glDrawArrays(GL_POINTS, 0, self.counts[groupIndex])
+
+    def renderAll(self, pointSize: float = 3.0, skip=None):
+        skip = skip or set()
         glUseProgram(self.shader)
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glEnable(GL_PROGRAM_POINT_SIZE)
-        color = self.colors[groupIndex]
-        glUniform4f(glGetUniformLocation(self.shader, "uColor"), *color)
-        glUniform1f(glGetUniformLocation(self.shader, "uPointSize"), pointSize)
-        self._bindGroupBuffer(groupIndex)
-        glDrawArrays(GL_POINTS, 0, self.counts[groupIndex])
-        self._unbindGroupBuffer()
+        glEnable(GL_POINT_SPRITE)
+        for groupIndex, count in self.counts.items():
+            if count == 0 or groupIndex in skip:
+                continue
+            glUniform4f(self.locColor, *self.colors[groupIndex])
+            glUniform1f(self.locPointSize, pointSize)
+            self._bindGroupBuffer(groupIndex)
+            glDrawArrays(GL_POINTS, 0, count)
+        self.unbindGroupBuffer()
+        glDisable(GL_POINT_SPRITE)
         glUseProgram(0)
-
-    def renderAll(self, pointSize: float = 3.0):
-        for groupIndex in list(self.vbos.keys()):
-            self.renderObjectsGroup(groupIndex, pointSize)
 
     def _bindGroupBuffer(self, groupIndex):
         if self.useVaos:
             glBindVertexArray(self.vaos[groupIndex])
-            return
         else:
             glBindBuffer(GL_ARRAY_BUFFER, self.vbos[groupIndex])
             glEnableVertexAttribArray(0)
             glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, None)
 
-    def _unbindGroupBuffer(self):
+    def unbindGroupBuffer(self):
         if self.useVaos:
             glBindVertexArray(0)
         else:
@@ -141,20 +162,24 @@ class ObjectGroupRenderer:
             glBindBuffer(GL_ARRAY_BUFFER, 0)
 
     def cleanup(self):
-        for vaoDict in [self.vaos]:
-            for vao in vaoDict.values():
-                glDeleteVertexArrays(1, [vao])
-        for vboDict in [self.vbos]:
-            for vbo in vboDict.values():
-                glDeleteBuffers(1, [vbo])
+        for vao in self.vaos.values():
+            glDeleteVertexArrays(1, [vao])
+        for vbo in self.vbos.values():
+            glDeleteBuffers(1, [vbo])
+        self.vaos.clear()
+        self.vbos.clear()
+        self.colors.clear()
+        self.counts.clear()
+        self.capacities.clear()
         if self.shader:
             glDeleteProgram(self.shader)
+            self.shader = None
 
 
 class GridRenderer:
     def __init__(self):
         self.minimumExtent = 1.0
-        self.maximumExtent = 1000.0
+        self.maximumExtent = 5000.0
         self.linesPerHalfAxis = 10
 
     def initialize(self):
@@ -312,6 +337,7 @@ class Universe3dViewWidget(QOpenGLWidget):
         glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
         glEnable(GL_POINT_SMOOTH)
         glHint(GL_POINT_SMOOTH_HINT, GL_NICEST)
+        glEnable(GL_POINT_SPRITE)
         glEnable(GL_PROGRAM_POINT_SIZE)
         glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST)
         glShadeModel(GL_SMOOTH)
@@ -325,16 +351,22 @@ class Universe3dViewWidget(QOpenGLWidget):
         if self.centerOnBarycenter:
             glTranslatef(-float(self.massCenter[0]), -float(self.massCenter[1]), -float(self.massCenter[2]))
         glDisable(GL_LIGHTING)
-        for groupIndex in list(self.objectsRenderer.vbos.keys()):
-            if groupIndex == 'barycenter':
-                continue
-            self.objectsRenderer.renderObjectsGroup(groupIndex, pointSize=4.0)
+        self.objectsRenderer.renderAll(pointSize=4.0, skip={"barycenter"})
         if self.showBarycenter:
-            print(self.showBarycenter)
             if "barycenter" not in self.objectsRenderer.vbos:
                 self.objectsRenderer.createGroup("barycenter", (1.0, 0.15, 0.15, 1.0))
-            self.objectsRenderer.updateGroupPositions("barycenter", self.massCenter.reshape(1, 3))
-            self.objectsRenderer.renderObjectsGroup("barycenter", pointSize=12.0)
+            self.objectsRenderer.updateGroupPositions("barycenter", self.massCenter.reshape(1, 3).astype(np.float32))
+            glUseProgram(self.objectsRenderer.shader)
+            glEnable(GL_BLEND)
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+            glEnable(GL_PROGRAM_POINT_SIZE)
+            glEnable(GL_POINT_SPRITE)
+            glDisable(GL_DEPTH_TEST)
+            self.objectsRenderer.renderObjectsGroup("barycenter", pointSize=18.0)
+            self.objectsRenderer.unbindGroupBuffer()
+            glEnable(GL_DEPTH_TEST)
+            glDisable(GL_POINT_SPRITE)
+            glUseProgram(0)
 
 
     def updateState(self, state: State):
@@ -415,7 +447,7 @@ class Universe3dViewWidget(QOpenGLWidget):
         glViewport(0, 0, w, h)
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
-        gluPerspective(45, w / max(h, 1), 0.1, 2000 * np.sqrt(2))
+        gluPerspective(45, w / max(h, 1), 0.1, 10000 * np.sqrt(2))
         glMatrixMode(GL_MODELVIEW)
 
     def resizeEvent(self, event):
