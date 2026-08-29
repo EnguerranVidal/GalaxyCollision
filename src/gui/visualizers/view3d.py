@@ -6,7 +6,7 @@ from OpenGL.GL import *
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import *
 
-from src.gui.visualizers.renderers import ObjectGroupRenderer, GridRenderer
+from src.gui.visualizers.renderers import ParticlesRenderer, GridRenderer
 from src.gui.settings import ViewSettings
 from src.gui.solver.simulator import State
 
@@ -58,7 +58,7 @@ class Universe3dViewWidget(QOpenGLWidget):
         self.centerOnBarycenter = False
         self.massCenter = np.zeros(3, dtype=np.float32)
         self.objectSpotData, self.pendingObjectBufferUpdates = {}, {}
-        self.objectsRenderer = ObjectGroupRenderer()
+        self.objectsRenderer = ParticlesRenderer()
         self.gridRenderer = GridRenderer()
         self.pendingObjectBufferUpdates = {}
         self.groupColors = {}

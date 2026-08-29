@@ -5,7 +5,7 @@ from OpenGL.GL import *
 from OpenGL.GL.shaders import compileShader
 
 
-class ObjectGroupRenderer:
+class ParticlesRenderer:
     def __init__(self):
         self.vaos = {}
         self.vbos = {}
@@ -21,9 +21,9 @@ class ObjectGroupRenderer:
         self.locMaxSize = -1
 
     def initialize(self):
-        with open("src/assets/shaders/objects/object.vert") as f:
+        with open("src/assets/shaders/particles/particles.vert") as f:
             vert = f.read()
-        with open("src/assets/shaders/objects/object.frag") as f:
+        with open("src/assets/shaders/particles/particles.frag") as f:
             frag = f.read()
         vertexShader = compileShader(vert, GL_VERTEX_SHADER)
         fragmentShader = compileShader(frag, GL_FRAGMENT_SHADER)
@@ -34,7 +34,7 @@ class ObjectGroupRenderer:
         glLinkProgram(self.shader)
         if glGetProgramiv(self.shader, GL_LINK_STATUS) != GL_TRUE:
             log = glGetProgramInfoLog(self.shader)
-            raise RuntimeError(f"ObjectGroupRenderer shader failed to link:\n{log}")
+            raise RuntimeError(f"ParticlesRenderer shader failed to link:\n{log}")
         glDeleteShader(vertexShader)
         glDeleteShader(fragmentShader)
         self.locColor = glGetUniformLocation(self.shader, "uColor")

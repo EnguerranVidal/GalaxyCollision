@@ -123,4 +123,5 @@ class NBodySimulator(QObject):
 class State:
     time: float = 0.0
     positions: Dict[str, np.ndarray] = field(default_factory=dict)
+    velocities: Dict[str, np.ndarray] = field(default_factory=dict)
     massCenter: np.ndarray = field(default_factory=lambda: np.zeros(3, dtype=np.float32))
