@@ -6,7 +6,7 @@ from OpenGL.GL import *
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import *
 
-from src.gui.visualizers.renderers import ParticlesRenderer, GridRenderer
+from src.gui.visualizers.renderers import ParticlesRenderer, BarycenterRenderer, GridRenderer
 from src.gui.settings import ViewSettings
 from src.gui.solver.simulator import State
 
@@ -57,10 +57,10 @@ class Universe3dViewWidget(QOpenGLWidget):
         self.showBarycenter = False
         self.centerOnBarycenter = False
         self.massCenter = np.zeros(3, dtype=np.float32)
-        self.objectSpotData, self.pendingObjectBufferUpdates = {}, {}
-        self.objectsRenderer = ParticlesRenderer()
-        self.gridRenderer = GridRenderer()
         self.pendingObjectBufferUpdates = {}
+        self.particlesRenderer = ParticlesRenderer()
+        self.barycenterRenderer = BarycenterRenderer()
+        self.gridRenderer = GridRenderer()
         self.groupColors = {}
         self.lastPosX, self.lastPosY = 0, 0
         self.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -87,7 +87,8 @@ class Universe3dViewWidget(QOpenGLWidget):
         glEnable(GL_PROGRAM_POINT_SIZE)
         glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST)
         glShadeModel(GL_SMOOTH)
-        self.objectsRenderer.initialize()
+        self.particlesRenderer.initialize()
+        self.barycenterRenderer.initialize()
 
     def paintGL(self):
         self._uploadPendingObjectBuffers()
@@ -95,25 +96,11 @@ class Universe3dViewWidget(QOpenGLWidget):
         self.camera.apply()
         self.gridRenderer.render(self.camera.zoom)
         if self.centerOnBarycenter:
-            glTranslatef(-float(self.massCenter[0]), -float(self.massCenter[1]), -float(self.massCenter[2]))
+            glTranslatef(-float(self.massCenter[0]),  -float(self.massCenter[1]), -float(self.massCenter[2]))
         glDisable(GL_LIGHTING)
-        self.objectsRenderer.renderAll(pointSize=4.0, skip={"barycenter"})
+        self.particlesRenderer.renderAll(pointSize=4.0, refDistance=max(self.camera.zoom, 0.5), minSize=1.5, maxSize=16.0)
         if self.showBarycenter:
-            if "barycenter" not in self.objectsRenderer.vbos:
-                self.objectsRenderer.createGroup("barycenter", (1.0, 0.15, 0.15, 1.0))
-            self.objectsRenderer.renderAll(pointSize=4.0, skip={"barycenter"}, refDistance=max(self.camera.zoom, 0.5), minSize=1.5, maxSize=16.0)
-            glUseProgram(self.objectsRenderer.shader)
-            glEnable(GL_BLEND)
-            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-            glEnable(GL_PROGRAM_POINT_SIZE)
-            glEnable(GL_POINT_SPRITE)
-            glDisable(GL_DEPTH_TEST)
-            self.objectsRenderer.renderObjectsGroup("barycenter", pointSize=18.0)
-            self.objectsRenderer.unbindGroupBuffer()
-            glEnable(GL_DEPTH_TEST)
-            glDisable(GL_POINT_SPRITE)
-            glUseProgram(0)
-
+            self.barycenterRenderer.render(self.massCenter, pointSize=14.0)
 
     def updateState(self, state: State):
         self.pendingObjectBufferUpdates.clear()
@@ -129,8 +116,8 @@ class Universe3dViewWidget(QOpenGLWidget):
 
     def setShowBarycenter(self, enabled: bool):
         self.showBarycenter = bool(enabled)
-        if not self.showBarycenter and "barycenter" in self.objectsRenderer.counts:
-            self.objectsRenderer.counts["barycenter"] = 0
+        if not self.showBarycenter and "barycenter" in self.particlesRenderer.counts:
+            self.particlesRenderer.counts["barycenter"] = 0
         self.update()
 
     def setCenterOnBarycenter(self, enabled: bool):
@@ -152,9 +139,9 @@ class Universe3dViewWidget(QOpenGLWidget):
         if not self.pendingObjectBufferUpdates:
             return
         for groupIndex, positions in self.pendingObjectBufferUpdates.items():
-            if groupIndex not in self.objectsRenderer.colors:
-                self.objectsRenderer.createGroup(groupIndex, self.groupColors.get(groupIndex, (1.0, 1.0, 1.0, 0.9)))
-            self.objectsRenderer.updateGroupPositions(groupIndex, positions)
+            if groupIndex not in self.particlesRenderer.colors:
+                self.particlesRenderer.createGroup(groupIndex, self.groupColors.get(groupIndex, (1.0, 1.0, 1.0, 0.9)))
+            self.particlesRenderer.updateGroupPositions(groupIndex, positions)
         self.pendingObjectBufferUpdates.clear()
 
     def mousePressEvent(self, event):

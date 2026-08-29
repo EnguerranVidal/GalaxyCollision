@@ -75,9 +75,9 @@ class ParticlesRenderer:
         glBindBuffer(GL_ARRAY_BUFFER, self.vbos[groupIndex])
         capacity = self.capacities.get(groupIndex, 0)
         if nbBytes > capacity:
-            new_cap = max(nbBytes, int(capacity * 1.5) if capacity else nbBytes)
-            glBufferData(GL_ARRAY_BUFFER, new_cap, None, GL_DYNAMIC_DRAW)
-            self.capacities[groupIndex] = new_cap
+            newCapacity = max(nbBytes, int(capacity * 1.5) if capacity else nbBytes)
+            glBufferData(GL_ARRAY_BUFFER, newCapacity, None, GL_DYNAMIC_DRAW)
+            self.capacities[groupIndex] = newCapacity
         else:
             glBufferData(GL_ARRAY_BUFFER, capacity, None, GL_DYNAMIC_DRAW)
         glBufferSubData(GL_ARRAY_BUFFER, 0, nbBytes, positions)
@@ -144,6 +144,60 @@ class ParticlesRenderer:
         if self.shader:
             glDeleteProgram(self.shader)
             self.shader = None
+
+
+class BarycenterRenderer:
+    def __init__(self):
+        self.vbo = None
+        self.shader = None
+        self.locColor = -1
+        self.locPointSize = -1
+        self.ready = False
+
+    def initialize(self):
+        self.vbo = glGenBuffers(1)
+        with open("src/assets/shaders/barycenter/barycenter.vert") as f:
+            vert = f.read()
+        with open("src/assets/shaders/barycenter/barycenter.frag") as f:
+            frag = f.read()
+        vertexShader = compileShader(vert, GL_VERTEX_SHADER)
+        fragmentShader = compileShader(frag, GL_FRAGMENT_SHADER)
+        self.shader = glCreateProgram()
+        glAttachShader(self.shader, vertexShader)
+        glAttachShader(self.shader, fragmentShader)
+        glBindAttribLocation(self.shader, 0, "aPos")
+        glLinkProgram(self.shader)
+        if glGetProgramiv(self.shader, GL_LINK_STATUS) != GL_TRUE:
+            raise RuntimeError(glGetProgramInfoLog(self.shader))
+        glDeleteShader(vertexShader)
+        glDeleteShader(fragmentShader)
+        self.locColor = glGetUniformLocation(self.shader, "uColor")
+        self.locPointSize = glGetUniformLocation(self.shader, "uPointSize")
+        self.ready = True
+
+    def render(self, position: np.ndarray, pointSize: float = 14.0, color=(1.0, 0.15, 0.15, 1.0)):
+        if not self.ready:
+            return
+        pos = np.ascontiguousarray(position, dtype=np.float32).reshape(1, 3)
+        glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
+        glBufferData(GL_ARRAY_BUFFER, pos.nbytes, pos, GL_DYNAMIC_DRAW)
+        glUseProgram(self.shader)
+        glEnable(GL_PROGRAM_POINT_SIZE)
+        glEnable(GL_POINT_SPRITE)
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glDisable(GL_DEPTH_TEST)
+        glUniform4f(self.locColor, *color)
+        glUniform1f(self.locPointSize, float(pointSize))
+        glEnableVertexAttribArray(0)
+        glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, None)
+        glDrawArrays(GL_POINTS, 0, 1)
+        glDisableVertexAttribArray(0)
+        glBindBuffer(GL_ARRAY_BUFFER, 0)
+        glEnable(GL_DEPTH_TEST)
+        glDisable(GL_POINT_SPRITE)
+        glUseProgram(0)
 
 
 class GridRenderer:
