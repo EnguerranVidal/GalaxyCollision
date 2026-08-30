@@ -74,6 +74,13 @@ class MainWindow(QMainWindow):
         self.showVelocityVectorsAction.setChecked(self.settings.view.showVelocityVectors)
         self.showVelocityVectorsAction.toggled.connect(self._toggleVelocityVectors)
         self.showVelocityVectorsAction.setIconVisibleInMenu(False)
+        # SHOW ACCELERATION VECTORS
+        self.showAccelerationVectorsAction = QAction("&Acceleration vectors", self)
+        self.showAccelerationVectorsAction.setStatusTip('Show Acceleration Vectors.')
+        self.showAccelerationVectorsAction.setCheckable(True)
+        self.showAccelerationVectorsAction.setChecked(self.settings.view.showAccelerationVectors)
+        self.showAccelerationVectorsAction.toggled.connect(self._toggleAccelerationVectors)
+        self.showAccelerationVectorsAction.setIconVisibleInMenu(False)
         # VISIT GITHUB
         self.githubAction = QAction('&Visit GitHub', self)
         self.githubAction.setIcon(self.icons['GITHUB'])
@@ -100,6 +107,7 @@ class MainWindow(QMainWindow):
         self.viewMenu.addAction(self.centerOnBarycenterAction)
         self.viewMenu.addSeparator()
         self.viewMenu.addAction(self.showVelocityVectorsAction)
+        self.viewMenu.addAction(self.showAccelerationVectorsAction)
         ### HELP MENU ###
         self.helpMenu = self.menuBar.addMenu('&Help')
         self.helpMenu.addAction(self.githubAction)
@@ -185,6 +193,13 @@ class MainWindow(QMainWindow):
         self.simulation3dWidget.velocityVectorLength = self.settings.view.velocityVectorLength
         self.simulation3dWidget.referenceVelocity = self.settings.view.referenceVelocity
         self.simulation3dWidget.setShowVelocityVectors(checked)
+        self.saveSettings()
+
+    def _toggleAccelerationVectors(self, checked: bool):
+        self.settings.view.showAccelerationVectors = checked
+        self.simulation3dWidget.accelerationVectorLength = self.settings.view.accelerationVectorLength
+        self.simulation3dWidget.referenceAcceleration = self.settings.view.referenceAcceleration
+        self.simulation3dWidget.setShowAccelerationVectors(checked)
         self.saveSettings()
 
     @staticmethod

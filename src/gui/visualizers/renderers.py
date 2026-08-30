@@ -239,12 +239,12 @@ class LineRenderer:
         glBindBuffer(GL_ARRAY_BUFFER, 0)
 
 
-class VelocityVectorRenderer:
-    def __init__(self):
+class VectorFieldRenderer:
+    def __init__(self, color=(0.35, 0.9, 1.0, 0.9)):
         self.vbo = None
         self.count = 0
         self.capacity = 0
-        self.color = (0.35, 0.9, 1.0, 0.9)
+        self.color = color
         self.ready = False
 
     def initialize(self):
@@ -252,7 +252,7 @@ class VelocityVectorRenderer:
         self.ready = True
 
     @staticmethod
-    def buildVelocityVectors(positions: np.ndarray, velocities: np.ndarray, vectorLength: float, velocityRef: float, subsample: int = 1):
+    def buildVectors(positions: np.ndarray, velocities: np.ndarray, vectorLength: float, velocityRef: float, subsample: int = 1):
         particlePositions, particleVelocities = np.ascontiguousarray(positions, dtype=np.float32), np.ascontiguousarray(velocities, dtype=np.float32)
         if subsample > 1:
             particlePositions, particleVelocities = particlePositions[::subsample], particleVelocities[::subsample]

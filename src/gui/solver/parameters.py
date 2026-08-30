@@ -126,17 +126,17 @@ class GalaxyDistributionParameters:
 @dataclass
 class SimulatorParameters:
     name: str = "Untitled Simulation"
-    timeStep: float = 0.001
-    nbParticles: int = 5000
+    timeStep: float = 5E-3
+    nbParticles: int = 10000
     theta: float = 0.5
-    tileSize: int = 16
+    tileSize: int = 32
     blockSize: int = 256
     seed: int = 0
-    device: str = "CPU"
+    device: str = "GPU"
     gravitationalConstant: float = 1.0
-    integratorType: str = "RK4"
+    integratorType: str = "EULER_EXPLICIT"
     distributionType: str = "GALAXY"
-    calculatorType: str = "BARNES_HUT"
+    calculatorType: str = "NEWTON"
     endless: bool = True
     maxTime: float = 1000.0
     saveResults: bool = False

@@ -6,8 +6,7 @@ from OpenGL.GL import *
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import *
 
-from gui.visualizers.renderers import VelocityVectorRenderer
-from src.gui.visualizers.renderers import ParticlesRenderer, BarycenterRenderer, GridRenderer
+from src.gui.visualizers.renderers import ParticlesRenderer, BarycenterRenderer, VectorFieldRenderer, GridRenderer
 from src.gui.settings import ViewSettings
 from src.gui.solver.simulator import State
 
@@ -61,11 +60,16 @@ class Universe3dViewWidget(QOpenGLWidget):
         self.velocityVectorLength = 0.5
         self.referenceVelocity = 1.0
         self.velocityVectorVertices = None
+        self.showAccelerationVectors = False
+        self.accelerationVectorLength = 0.5
+        self.referenceAcceleration = 1.0
+        self.accelerationVectorVertices = None
         self.massCenter = np.zeros(3, dtype=np.float32)
         self.pendingObjectBufferUpdates = {}
         self.particlesRenderer = ParticlesRenderer()
         self.barycenterRenderer = BarycenterRenderer()
-        self.velocityVectorRenderer = VelocityVectorRenderer()
+        self.velocityVectorRenderer = VectorFieldRenderer(color=(0.35, 0.9, 1.0, 0.9))
+        self.accelerationVectorRenderer = VectorFieldRenderer(color=(1.0, 0.45, 0.2, 0.9))
         self.gridRenderer = GridRenderer()
         self.groupColors = {}
         self.lastPosX, self.lastPosY = 0, 0
@@ -96,6 +100,7 @@ class Universe3dViewWidget(QOpenGLWidget):
         self.particlesRenderer.initialize()
         self.barycenterRenderer.initialize()
         self.velocityVectorRenderer.initialize()
+        self.accelerationVectorRenderer.initialize()
 
     def paintGL(self):
         self._uploadPendingObjectBuffers()
@@ -109,6 +114,9 @@ class Universe3dViewWidget(QOpenGLWidget):
         if self.showVelocityVectors and self.velocityVectorVertices is not None:
             self.velocityVectorRenderer.update(self.velocityVectorVertices)
             self.velocityVectorRenderer.render(lineWidth=1.5)
+        if self.showAccelerationVectors and self.accelerationVectorVertices is not None:
+            self.accelerationVectorRenderer.update(self.accelerationVectorVertices)
+            self.accelerationVectorRenderer.render(lineWidth=1.5)
         if self.showBarycenter:
             self.barycenterRenderer.render(self.massCenter, pointSize=14.0)
 
@@ -127,11 +135,24 @@ class Universe3dViewWidget(QOpenGLWidget):
                 velocities = state.velocities.get(groupIndex)
                 if velocities is None or len(velocities) != len(positions):
                     continue
-                vectors = VelocityVectorRenderer.buildVelocityVectors(positions, velocities, self.velocityVectorLength, self.referenceVelocity, subsample=subSample)
+                vectors = VectorFieldRenderer.buildVectors(positions, velocities, self.velocityVectorLength, self.referenceVelocity, subsample=subSample)
                 chunks.append(vectors)
             self.velocityVectorVertices = np.vstack(chunks) if chunks else None
         else:
             self.velocityVectorVertices = None
+        if self.showAccelerationVectors and state.accelerations:
+            chunks = []
+            nbTotal = sum(len(pos) for pos in state.positions.values())
+            subsample = 1 if nbTotal <= 8000 else max(1, nbTotal // 8000)
+            for groupIndex, positions in state.positions.items():
+                accelerations = state.accelerations.get(groupIndex)
+                if accelerations is None or len(accelerations) != len(positions):
+                    continue
+                vectors = VectorFieldRenderer.buildVectors(positions, accelerations, self.accelerationVectorLength, self.referenceAcceleration, subsample=subsample)
+                chunks.append(vectors)
+            self.accelerationVectorVertices = np.vstack(chunks) if chunks else None
+        else:
+            self.accelerationVectorVertices = None
         self.timeOverlay.setText(f"Time: {state.time:.3f}")
         self.timeOverlay.adjustSize()
         self._placeTimeOverlay()
@@ -158,8 +179,23 @@ class Universe3dViewWidget(QOpenGLWidget):
         self.velocityVectorLength = float(length)
         self.update()
 
-    def setVelocityVectorRef(self, velocityRef: float):
-        self.referenceVelocity = float(velocityRef)
+    def setVelocityVectorRef(self, referenceVelocity: float):
+        self.referenceVelocity = float(referenceVelocity)
+        self.update()
+
+    def setShowAccelerationVectors(self, enabled: bool):
+        self.showAccelerationVectors = bool(enabled)
+        if not self.showAccelerationVectors:
+            self.accelerationVectorVertices = None
+            self.accelerationVectorRenderer.clear()
+        self.update()
+
+    def setAccelerationVectorLength(self, length: float):
+        self.accelerationVectorLength = float(length)
+        self.update()
+
+    def setAccelerationVectorRef(self, referenceAcceleration: float):
+        self.referenceAcceleration = float(referenceAcceleration)
         self.update()
 
     def setViewSettings(self, viewSettings: ViewSettings):
@@ -168,6 +204,9 @@ class Universe3dViewWidget(QOpenGLWidget):
         self.showVelocityVectors = bool(viewSettings.showVelocityVectors)
         self.velocityVectorLength = float(viewSettings.velocityVectorLength)
         self.referenceVelocity = float(viewSettings.referenceVelocity)
+        self.showAccelerationVectors = bool(viewSettings.showAccelerationVectors)
+        self.accelerationVectorLength = float(viewSettings.accelerationVectorLength)
+        self.referenceAcceleration = float(viewSettings.referenceAcceleration)
         self.update()
 
     def _placeTimeOverlay(self):

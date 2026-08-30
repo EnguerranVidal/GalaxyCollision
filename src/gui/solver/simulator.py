@@ -14,7 +14,7 @@ class NBodySimulator(QObject):
     positionsReady = pyqtSignal(object)
     simulationFinished = pyqtSignal()
 
-    MAX_FPS = 30.0
+    MAX_FPS = 120.0
 
     def __init__(self, parameters, parent=None):
         super().__init__(parent)
@@ -70,7 +70,11 @@ class NBodySimulator(QObject):
             self.simulationTime += self.parameters.timeStep
             now = time.perf_counter()
             if now >= nextFrame:
-                state = State(time=self.simulationTime, positions={"default": self._positionsAsArray()}, velocities={"default": self._velocitiesAsArray()}, massCenter=self._massCenterAsArray())
+                state = State(time=self.simulationTime,
+                              positions={"default": self._positionsAsArray()},
+                              velocities={"default": self._velocitiesAsArray()},
+                              accelerations={"default": self._accelerationsAsArray()},
+                              massCenter=self._massCenterAsArray())
                 self.positionsReady.emit(state)
                 nextFrame = now + self.frameInterval
             if not self.cppParameters.endless and self.simulationTime >= self.cppParameters.maxTime:
@@ -87,7 +91,11 @@ class NBodySimulator(QObject):
             self.initialize()
         self.integrator.step(self.particles, self.calculator)
         self.simulationTime += self.cppParameters.timeStep
-        state = State(time=self.simulationTime, positions={"default": self._positionsAsArray()}, velocities={"default": self._velocitiesAsArray()}, massCenter=self._massCenterAsArray())
+        state = State(time=self.simulationTime,
+                      positions={"default": self._positionsAsArray()},
+                      velocities={"default": self._velocitiesAsArray()},
+                      accelerations={"default": self._accelerationsAsArray()},
+                      massCenter=self._massCenterAsArray())
         self.positionsReady.emit(state)
 
     @pyqtSlot()
@@ -104,6 +112,12 @@ class NBodySimulator(QObject):
         n = self.particles.getNbParticles()
         outputArray = np.empty((n, 3), dtype=np.float32)
         self.particles.copyVelocitiesTo(outputArray)
+        return outputArray
+
+    def _accelerationsAsArray(self):
+        n = self.particles.getNbParticles()
+        outputArray = np.empty((n, 3), dtype=np.float32)
+        self.particles.copyAccelerationsTo(outputArray)
         return outputArray
 
     def _massesAsArray(self):
@@ -124,4 +138,5 @@ class State:
     time: float = 0.0
     positions: Dict[str, np.ndarray] = field(default_factory=dict)
     velocities: Dict[str, np.ndarray] = field(default_factory=dict)
+    accelerations: Dict[str, np.ndarray] = field(default_factory=dict)
     massCenter: np.ndarray = field(default_factory=lambda: np.zeros(3, dtype=np.float32))

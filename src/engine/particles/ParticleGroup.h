@@ -30,6 +30,7 @@ public:
 
     void copyPositionsTo(float* out, int count) const;
     void copyVelocitiesTo(float* out, int count) const;
+    void copyAccelerationsTo(float* out, int count) const;
     void copyMassesTo(float* out, int count) const;
 
 public:

@@ -29,21 +29,15 @@ void bindParticles(py::module_& m)
             {
                 py::buffer_info buf = out.request();
                 const int n = particles.getNbParticles();
-                if (buf.ndim == 2)
-                {
+                if (buf.ndim == 2) {
                     if (buf.shape[0] < n || buf.shape[1] != 3)
                         throw std::runtime_error("copyPositionsTo: expected shape (N, 3)");
                 }
-                else if (buf.ndim == 1)
-                {
+                else if (buf.ndim == 1) {
                     if (buf.shape[0] < 3 * n)
                         throw std::runtime_error("copyPositionsTo: expected length >= 3*N");
                 }
-                else
-                {
-                    throw std::runtime_error("copyPositionsTo: array must be 1D or 2D");
-                }
-
+                else {throw std::runtime_error("copyPositionsTo: array must be 1D or 2D");}
                 particles.copyPositionsTo(static_cast<float*>(buf.ptr), n);
             },
             py::arg("out"))
@@ -51,23 +45,34 @@ void bindParticles(py::module_& m)
             {
                 py::buffer_info buf = out.request();
                 const int n = particles.getNbParticles();
-                if (buf.ndim == 2)
-                {
+                if (buf.ndim == 2) {
                     if (buf.shape[0] < n || buf.shape[1] != 3)
                         throw std::runtime_error("copyVelocitiesTo: expected shape (N, 3)");
                 }
-                else if (buf.ndim == 1)
-                {
+                else if (buf.ndim == 1) {
                     if (buf.shape[0] < 3 * n)
                         throw std::runtime_error("copyVelocitiesTo: expected length >= 3*N");
                 }
-                else
-                {
-                    throw std::runtime_error("copyVelocitiesTo: array must be 1D or 2D");
-                }
+                else {throw std::runtime_error("copyVelocitiesTo: array must be 1D or 2D");}
                 particles.copyVelocitiesTo(static_cast<float*>(buf.ptr), n);
             },
             py::arg("out"))
+        .def("copyAccelerationsTo", [](const ParticleGroup& particles, py::array_t<float, py::array::c_style | py::array::forcecast> out)
+            {
+                py::buffer_info buf = out.request();
+                const int n = particles.getNbParticles();
+                if (buf.ndim == 2) {
+                    if (buf.shape[0] < n || buf.shape[1] != 3)
+                        throw std::runtime_error("copyAccelerationsTo: expected shape (N, 3)");
+                }
+                else if (buf.ndim == 1) {
+                    if (buf.shape[0] < 3 * n)
+                        throw std::runtime_error("copyAccelerationsTo: expected length >= 3*N");
+                }
+                else{throw std::runtime_error("copyAccelerationsTo: array must be 1D or 2D");}
+                particles.copyAccelerationsTo(static_cast<float*>(buf.ptr), n);
+            },
+    py::arg("out"))
         .def("copyMassesTo", [](const ParticleGroup& particles, py::array_t<float, py::array::c_style | py::array::forcecast> out)
             {
                 py::buffer_info buf = out.request();

@@ -25,8 +25,11 @@ class ViewSettings:
     showBarycenter: bool = False
     centerOnBarycenter: bool = False
     showVelocityVectors: bool = False
-    velocityVectorLength: float = 0.5
-    referenceVelocity: float = 1.0
+    velocityVectorLength: float = 0.25
+    referenceVelocity: float = 1E1
+    showAccelerationVectors: bool = False
+    accelerationVectorLength: float = 0.25
+    referenceAcceleration: float = 1E1
 
     @classmethod
     def fromDict(cls, data=None):
@@ -35,8 +38,11 @@ class ViewSettings:
             showBarycenter=bool(data.get("SHOW_BARYCENTER", False)),
             centerOnBarycenter=bool(data.get("CENTER_ON_BARYCENTER", False)),
             showVelocityVectors=bool(data.get("SHOW_VELOCITY_VECTORS", False)),
-            velocityVectorLength=float(data.get("VELOCITY_VECTOR_LENGTH", 0.5)),
-            referenceVelocity=float(data.get("REFERENCE_VELOCITY", 1.0)),
+            velocityVectorLength=float(data.get("VELOCITY_VECTOR_LENGTH", 0.25)),
+            referenceVelocity=float(data.get("REFERENCE_VELOCITY", 1E1)),
+            showAccelerationVectors=bool(data.get("SHOW_ACCELERATION_VECTORS", False)),
+            accelerationVectorLength=float(data.get("ACCELERATION_VECTOR_LENGTH", 0.25)),
+            referenceAcceleration=float(data.get("REFERENCE_ACCELERATION", 1E1)),
         )
 
     def toDict(self):
@@ -46,6 +52,9 @@ class ViewSettings:
             "SHOW_VELOCITY_VECTORS": self.showVelocityVectors,
             "VELOCITY_VECTOR_LENGTH": self.velocityVectorLength,
             "REFERENCE_VELOCITY": self.referenceVelocity,
+            "SHOW_ACCELERATION_VECTORS": self.showAccelerationVectors,
+            "ACCELERATION_VECTOR_LENGTH": self.accelerationVectorLength,
+            "REFERENCE_ACCELERATION": self.referenceAcceleration,
         }
 
 

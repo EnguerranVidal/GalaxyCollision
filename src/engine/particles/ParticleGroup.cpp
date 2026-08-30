@@ -121,6 +121,17 @@ void ParticleGroup::copyVelocitiesTo(float* out, int count) const
     }
 }
 
+void ParticleGroup::copyAccelerationsTo(float* out, int count) const
+{
+    const int n = std::min(count, nbParticles);
+    for (int i = 0; i < n; ++i)
+    {
+        out[3 * i + 0] = accelerations[i].x;
+        out[3 * i + 1] = accelerations[i].y;
+        out[3 * i + 2] = accelerations[i].z;
+    }
+}
+
 void ParticleGroup::copyMassesTo(float* out, int count) const
 {
     const int n = std::min(count, nbParticles);
