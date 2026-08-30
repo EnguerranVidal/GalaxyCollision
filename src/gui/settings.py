@@ -4,7 +4,8 @@ from src.gui.solver.parameters import SimulatorParameters
 
 
 @dataclass
-class WindowGeometry:
+class WindowSettings:
+    maximized: bool = False
     x: int = 300
     y: int = 300
     width: int = 1200
@@ -13,40 +14,39 @@ class WindowGeometry:
     @classmethod
     def fromDict(cls, data=None):
         data = data or {}
-        return cls(data.get("X", 300), data.get("Y", 300), data.get("WIDTH", 1200), data.get("HEIGHT", 600))
+        return cls(bool(data.get("MAXIMIZED", False)), data.get("X", 300), data.get("Y", 300), data.get("WIDTH", 1200), data.get("HEIGHT", 600))
 
     def toDict(self):
-        return {"X": self.x, "Y": self.y, "WIDTH": self.width, "HEIGHT": self.height}
+        return {"MAXIMIZED": self.maximized, "X": self.x, "Y": self.y, "WIDTH": self.width, "HEIGHT": self.height}
 
-
-@dataclass
-class WindowSettings:
-    maximized: bool = False
-    geometry: WindowGeometry = field(default_factory=WindowGeometry)
-
-    @classmethod
-    def fromDict(cls, data=None):
-        data = data or {}
-        return cls(bool(data.get("MAXIMIZED", False)), WindowGeometry.fromDict(data.get("GEOMETRY")))
-
-    def toDict(self):
-        return {"MAXIMIZED": self.maximized, "GEOMETRY": self.geometry.toDict()}
 
 @dataclass
 class ViewSettings:
     showBarycenter: bool = False
     centerOnBarycenter: bool = False
+    showVelocityVectors: bool = False
+    velocityVectorLength: float = 0.5
+    referenceVelocity: float = 1.0
 
     @classmethod
     def fromDict(cls, data=None):
         data = data or {}
         return cls(
             showBarycenter=bool(data.get("SHOW_BARYCENTER", False)),
-            centerOnBarycenter=bool(data.get("CENTER_ON_BARYCENTER", False))
+            centerOnBarycenter=bool(data.get("CENTER_ON_BARYCENTER", False)),
+            showVelocityVectors=bool(data.get("SHOW_VELOCITY_VECTORS", False)),
+            velocityVectorLength=float(data.get("VELOCITY_VECTOR_LENGTH", 0.5)),
+            referenceVelocity=float(data.get("REFERENCE_VELOCITY", 1.0)),
         )
 
     def toDict(self):
-        return {"SHOW_BARYCENTER": self.showBarycenter, "CENTER_ON_BARYCENTER": self.centerOnBarycenter,}
+        return {
+            "SHOW_BARYCENTER": self.showBarycenter,
+            "CENTER_ON_BARYCENTER": self.centerOnBarycenter,
+            "SHOW_VELOCITY_VECTORS": self.showVelocityVectors,
+            "VELOCITY_VECTOR_LENGTH": self.velocityVectorLength,
+            "REFERENCE_VELOCITY": self.referenceVelocity,
+        }
 
 
 @dataclass

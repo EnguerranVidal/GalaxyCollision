@@ -10,7 +10,7 @@ from src.gui.solver.simulator import NBodySimulator, State
 from src.gui.solver.parameters import SimulatorParameters
 from src.gui.configEditor import SimulationConfigEditorDock
 from src.gui.visualizers.view3d import Universe3dViewWidget
-from src.gui.settings import UiSettings, WindowGeometry
+from src.gui.settings import UiSettings
 
 
 class MainWindow(QMainWindow):
@@ -61,12 +61,19 @@ class MainWindow(QMainWindow):
         self.showBarycenterAction.setIconVisibleInMenu(False)
         # CENTER ON BARYCENTER
         self.centerOnBarycenterAction = QAction('&Center on Barycentre', self)
-        self.showBarycenterAction.setIcon(self.icons['ARROWS_CENTER'])
+        self.centerOnBarycenterAction.setIcon(self.icons['ARROWS_CENTER'])
         self.centerOnBarycenterAction.setStatusTip('Center Camera on Barycenter.')
         self.centerOnBarycenterAction.setCheckable(True)
         self.centerOnBarycenterAction.setChecked(self.settings.view.centerOnBarycenter)
         self.centerOnBarycenterAction.toggled.connect(self._toggleCenterOnBarycenter)
-        self.showBarycenterAction.setIconVisibleInMenu(False)
+        self.centerOnBarycenterAction.setIconVisibleInMenu(False)
+        # SHOW VELOCITY VECTORS
+        self.showVelocityVectorsAction = QAction("&Velocity vectors", self)
+        self.showVelocityVectorsAction.setStatusTip('Show Velocity Vectors.')
+        self.showVelocityVectorsAction.setCheckable(True)
+        self.showVelocityVectorsAction.setChecked(self.settings.view.showVelocityVectors)
+        self.showVelocityVectorsAction.toggled.connect(self._toggleVelocityVectors)
+        self.showVelocityVectorsAction.setIconVisibleInMenu(False)
         # VISIT GITHUB
         self.githubAction = QAction('&Visit GitHub', self)
         self.githubAction.setIcon(self.icons['GITHUB'])
@@ -91,6 +98,8 @@ class MainWindow(QMainWindow):
         self.viewMenu = self.menuBar.addMenu('&View')
         self.viewMenu.addAction(self.showBarycenterAction)
         self.viewMenu.addAction(self.centerOnBarycenterAction)
+        self.viewMenu.addSeparator()
+        self.viewMenu.addAction(self.showVelocityVectorsAction)
         ### HELP MENU ###
         self.helpMenu = self.menuBar.addMenu('&Help')
         self.helpMenu.addAction(self.githubAction)
@@ -152,8 +161,8 @@ class MainWindow(QMainWindow):
         if self.settings.window.maximized:
             self.showMaximized()
         else:
-            windowGeometry = self.settings.window.geometry
-            self.setGeometry(windowGeometry.x, windowGeometry.y, windowGeometry.width, windowGeometry.height)
+            windowSettings = self.settings.window
+            self.setGeometry(windowSettings.x, windowSettings.y, windowSettings.width, windowSettings.height)
 
     def _center(self):
         frameGeometry = self.frameGeometry()
@@ -163,13 +172,20 @@ class MainWindow(QMainWindow):
 
     def _toggleBarycenter(self, checked: bool):
         self.settings.view.showBarycenter = checked
-        self.saveSettings()
         self.simulation3dWidget.setShowBarycenter(checked)
+        self.saveSettings()
 
     def _toggleCenterOnBarycenter(self, checked: bool):
         self.settings.view.centerOnBarycenter = checked
-        self.saveSettings()
         self.simulation3dWidget.setCenterOnBarycenter(checked)
+        self.saveSettings()
+
+    def _toggleVelocityVectors(self, checked: bool):
+        self.settings.view.showVelocityVectors = checked
+        self.simulation3dWidget.velocityVectorLength = self.settings.view.velocityVectorLength
+        self.simulation3dWidget.referenceVelocity = self.settings.view.referenceVelocity
+        self.simulation3dWidget.setShowVelocityVectors(checked)
+        self.saveSettings()
 
     @staticmethod
     def _openGithub():
@@ -216,7 +232,8 @@ class MainWindow(QMainWindow):
         self.settings.window.maximized = self.isMaximized()
         if not self.isMaximized():
             g = self.geometry()
-            self.settings.window.geometry = WindowGeometry.fromDict({'X': g.x(), 'Y': g.y(), 'WIDTH': g.width(), 'HEIGHT': g.height()})
+            self.settings.window.x, self.settings.window.y = g.x(), g.y()
+            self.settings.window.width, self.settings.window.height = g.width(), g.height()
         self.saveSettings()
         if self.workerThread and self.workerThread.isRunning():
             print("Closing: Quitting worker thread...")

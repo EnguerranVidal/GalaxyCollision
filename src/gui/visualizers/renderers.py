@@ -200,6 +200,107 @@ class BarycenterRenderer:
         glUseProgram(0)
 
 
+class LineRenderer:
+    def __init__(self):
+        self.vbo = None
+        self.count = 0
+        self.capacity = 0
+        self.color = (0.4, 0.85, 1.0, 0.85)
+
+    def initialize(self):
+        self.vbo = glGenBuffers(1)
+
+    def update(self, vertices: np.ndarray):
+        vertices = np.ascontiguousarray(vertices, dtype=np.float32)
+        nbytes = vertices.nbytes
+        glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
+        if nbytes > self.capacity:
+            self.capacity = max(nbytes, int(self.capacity * 1.5) or nbytes)
+            glBufferData(GL_ARRAY_BUFFER, self.capacity, None, GL_DYNAMIC_DRAW)
+        else:
+            glBufferData(GL_ARRAY_BUFFER, self.capacity, None, GL_DYNAMIC_DRAW)
+        glBufferSubData(GL_ARRAY_BUFFER, 0, nbytes, vertices)
+        glBindBuffer(GL_ARRAY_BUFFER, 0)
+        self.count = vertices.shape[0]
+
+    def render(self, line_width: float = 1.0):
+        if self.count == 0:
+            return
+        glUseProgram(0)
+        glDisable(GL_LIGHTING)
+        glEnable(GL_BLEND)
+        glColor4f(*self.color)
+        glLineWidth(line_width)
+        glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
+        glEnableClientState(GL_VERTEX_ARRAY)
+        glVertexPointer(3, GL_FLOAT, 0, None)
+        glDrawArrays(GL_LINES, 0, self.count)
+        glDisableClientState(GL_VERTEX_ARRAY)
+        glBindBuffer(GL_ARRAY_BUFFER, 0)
+
+
+class VelocityVectorRenderer:
+    def __init__(self):
+        self.vbo = None
+        self.count = 0
+        self.capacity = 0
+        self.color = (0.35, 0.9, 1.0, 0.9)
+        self.ready = False
+
+    def initialize(self):
+        self.vbo = glGenBuffers(1)
+        self.ready = True
+
+    @staticmethod
+    def buildVelocityVectors(positions: np.ndarray, velocities: np.ndarray, vectorLength: float, velocityRef: float, subsample: int = 1):
+        particlePositions, particleVelocities = np.ascontiguousarray(positions, dtype=np.float32), np.ascontiguousarray(velocities, dtype=np.float32)
+        if subsample > 1:
+            particlePositions, particleVelocities = particlePositions[::subsample], particleVelocities[::subsample]
+        speed = np.linalg.norm(particleVelocities, axis=1, keepdims=True)
+        speed = np.maximum(speed, 1e-8)
+        scale = np.minimum(speed / max(velocityRef, 1e-8), 1.0) * vectorLength
+        andPoints = particlePositions + (particleVelocities / speed) * scale
+        vertices = np.empty((particlePositions.shape[0] * 2, 3), dtype=np.float32)
+        vertices[0::2] = particlePositions
+        vertices[1::2] = andPoints
+        return vertices
+
+    def update(self, vertices: np.ndarray):
+        if not self.ready:
+            return
+        vertices = np.ascontiguousarray(vertices, dtype=np.float32)
+        nbBytes = int(vertices.nbytes)
+        glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
+        if nbBytes > self.capacity:
+            newCapacity = max(nbBytes, int(self.capacity * 1.5) if self.capacity else nbBytes)
+            glBufferData(GL_ARRAY_BUFFER, newCapacity, None, GL_DYNAMIC_DRAW)
+            self.capacity = newCapacity
+        else:
+            glBufferData(GL_ARRAY_BUFFER, self.capacity, None, GL_DYNAMIC_DRAW)
+        glBufferSubData(GL_ARRAY_BUFFER, 0, nbBytes, vertices)
+        glBindBuffer(GL_ARRAY_BUFFER, 0)
+        self.count = vertices.shape[0]
+
+    def render(self, lineWidth: float = 1.5):
+        if not self.ready or self.count == 0:
+            return
+        glUseProgram(0)
+        glDisable(GL_LIGHTING)
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glColor4f(*self.color)
+        glLineWidth(lineWidth)
+        glBindBuffer(GL_ARRAY_BUFFER, self.vbo)
+        glEnableClientState(GL_VERTEX_ARRAY)
+        glVertexPointer(3, GL_FLOAT, 0, None)
+        glDrawArrays(GL_LINES, 0, self.count)
+        glDisableClientState(GL_VERTEX_ARRAY)
+        glBindBuffer(GL_ARRAY_BUFFER, 0)
+
+    def clear(self):
+        self.count = 0
+
+
 class GridRenderer:
     def __init__(self):
         self.minimumExtent = 1.0

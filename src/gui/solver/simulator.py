@@ -70,7 +70,7 @@ class NBodySimulator(QObject):
             self.simulationTime += self.parameters.timeStep
             now = time.perf_counter()
             if now >= nextFrame:
-                state = State(time=self.simulationTime, positions={"default": self._positionsAsArray()}, massCenter=self._massCenterAsArray())
+                state = State(time=self.simulationTime, positions={"default": self._positionsAsArray()}, velocities={"default": self._velocitiesAsArray()}, massCenter=self._massCenterAsArray())
                 self.positionsReady.emit(state)
                 nextFrame = now + self.frameInterval
             if not self.cppParameters.endless and self.simulationTime >= self.cppParameters.maxTime:
@@ -87,7 +87,7 @@ class NBodySimulator(QObject):
             self.initialize()
         self.integrator.step(self.particles, self.calculator)
         self.simulationTime += self.cppParameters.timeStep
-        state = State(time=self.simulationTime, positions={"default": self._positionsAsArray()}, massCenter=self._massCenterAsArray())
+        state = State(time=self.simulationTime, positions={"default": self._positionsAsArray()}, velocities={"default": self._velocitiesAsArray()}, massCenter=self._massCenterAsArray())
         self.positionsReady.emit(state)
 
     @pyqtSlot()

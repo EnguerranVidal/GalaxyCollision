@@ -6,6 +6,7 @@ from OpenGL.GL import *
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import *
 
+from gui.visualizers.renderers import VelocityVectorRenderer
 from src.gui.visualizers.renderers import ParticlesRenderer, BarycenterRenderer, GridRenderer
 from src.gui.settings import ViewSettings
 from src.gui.solver.simulator import State
@@ -56,10 +57,15 @@ class Universe3dViewWidget(QOpenGLWidget):
         self.camera = Camera()
         self.showBarycenter = False
         self.centerOnBarycenter = False
+        self.showVelocityVectors = False
+        self.velocityVectorLength = 0.5
+        self.referenceVelocity = 1.0
+        self.velocityVectorVertices = None
         self.massCenter = np.zeros(3, dtype=np.float32)
         self.pendingObjectBufferUpdates = {}
         self.particlesRenderer = ParticlesRenderer()
         self.barycenterRenderer = BarycenterRenderer()
+        self.velocityVectorRenderer = VelocityVectorRenderer()
         self.gridRenderer = GridRenderer()
         self.groupColors = {}
         self.lastPosX, self.lastPosY = 0, 0
@@ -89,6 +95,7 @@ class Universe3dViewWidget(QOpenGLWidget):
         glShadeModel(GL_SMOOTH)
         self.particlesRenderer.initialize()
         self.barycenterRenderer.initialize()
+        self.velocityVectorRenderer.initialize()
 
     def paintGL(self):
         self._uploadPendingObjectBuffers()
@@ -99,6 +106,9 @@ class Universe3dViewWidget(QOpenGLWidget):
             glTranslatef(-float(self.massCenter[0]),  -float(self.massCenter[1]), -float(self.massCenter[2]))
         glDisable(GL_LIGHTING)
         self.particlesRenderer.renderAll(pointSize=4.0, refDistance=max(self.camera.zoom, 0.5), minSize=1.5, maxSize=16.0)
+        if self.showVelocityVectors and self.velocityVectorVertices is not None:
+            self.velocityVectorRenderer.update(self.velocityVectorVertices)
+            self.velocityVectorRenderer.render(lineWidth=1.5)
         if self.showBarycenter:
             self.barycenterRenderer.render(self.massCenter, pointSize=14.0)
 
@@ -109,6 +119,19 @@ class Universe3dViewWidget(QOpenGLWidget):
                 self.groupColors[groupIndex] = (0.9, 0.7, 0.3, 0.95)
             self.pendingObjectBufferUpdates[groupIndex] = positionArray
         self.massCenter = np.asarray(state.massCenter, dtype=np.float32).reshape(3)
+        if self.showVelocityVectors and state.velocities:
+            chunks = []
+            nbTotal = sum(len(pos) for pos in state.positions.values())
+            subSample = 1 if nbTotal <= 8000 else max(1, nbTotal // 8000)
+            for groupIndex, positions in state.positions.items():
+                velocities = state.velocities.get(groupIndex)
+                if velocities is None or len(velocities) != len(positions):
+                    continue
+                vectors = VelocityVectorRenderer.buildVelocityVectors(positions, velocities, self.velocityVectorLength, self.referenceVelocity, subsample=subSample)
+                chunks.append(vectors)
+            self.velocityVectorVertices = np.vstack(chunks) if chunks else None
+        else:
+            self.velocityVectorVertices = None
         self.timeOverlay.setText(f"Time: {state.time:.3f}")
         self.timeOverlay.adjustSize()
         self._placeTimeOverlay()
@@ -124,9 +147,27 @@ class Universe3dViewWidget(QOpenGLWidget):
         self.centerOnBarycenter = bool(enabled)
         self.update()
 
+    def setShowVelocityVectors(self, enabled: bool):
+        self.showVelocityVectors = bool(enabled)
+        if not self.showVelocityVectors:
+            self.velocityVectorVertices = None
+            self.velocityVectorRenderer.clear()
+        self.update()
+
+    def setVelocityVectorLength(self, length: float):
+        self.velocityVectorLength = float(length)
+        self.update()
+
+    def setVelocityVectorRef(self, velocityRef: float):
+        self.referenceVelocity = float(velocityRef)
+        self.update()
+
     def setViewSettings(self, viewSettings: ViewSettings):
         self.showBarycenter = bool(viewSettings.showBarycenter)
         self.centerOnBarycenter = bool(viewSettings.centerOnBarycenter)
+        self.showVelocityVectors = bool(viewSettings.showVelocityVectors)
+        self.velocityVectorLength = float(viewSettings.velocityVectorLength)
+        self.referenceVelocity = float(viewSettings.referenceVelocity)
         self.update()
 
     def _placeTimeOverlay(self):
