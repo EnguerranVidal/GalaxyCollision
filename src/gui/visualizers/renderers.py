@@ -302,9 +302,9 @@ class VectorFieldRenderer:
 
 
 class GridRenderer:
-    def __init__(self):
-        self.minimumExtent = 1.0
-        self.maximumExtent = 5000.0
+    def __init__(self, minimumExtent: float = 1.0, maximumExtent: float = 5000.0):
+        self.minimumExtent = float(minimumExtent)
+        self.maximumExtent = float(maximumExtent)
         self.linesPerHalfAxis = 10
 
     def initialize(self):
@@ -423,3 +423,7 @@ class GridRenderer:
             glMatrixMode(GL_PROJECTION)
             glPopMatrix()
             glMatrixMode(GL_MODELVIEW)
+
+    def setExtentLimits(self, minimumExtent: float, maximumExtent: float):
+        self.minimumExtent = float(minimumExtent)
+        self.maximumExtent = float(maximumExtent)

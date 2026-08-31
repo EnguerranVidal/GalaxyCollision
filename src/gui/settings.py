@@ -22,6 +22,8 @@ class WindowSettings:
 
 @dataclass
 class ViewSettings:
+    minimumExtent: float = 1.25
+    maximumExtent: float = 5000.0
     showBarycenter: bool = False
     centerOnBarycenter: bool = False
     showVelocityVectors: bool = False
@@ -35,6 +37,8 @@ class ViewSettings:
     def fromDict(cls, data=None):
         data = data or {}
         return cls(
+            minimumExtent=float(data.get("MINIMUM_EXTENT", 1.25)),
+            maximumExtent=float(data.get("MAXIMUM_EXTENT", 5000.0)),
             showBarycenter=bool(data.get("SHOW_BARYCENTER", False)),
             centerOnBarycenter=bool(data.get("CENTER_ON_BARYCENTER", False)),
             showVelocityVectors=bool(data.get("SHOW_VELOCITY_VECTORS", False)),
@@ -47,6 +51,8 @@ class ViewSettings:
 
     def toDict(self):
         return {
+            "MINIMUM_EXTENT": self.minimumExtent,
+            "MAXIMUM_EXTENT": self.maximumExtent,
             "SHOW_BARYCENTER": self.showBarycenter,
             "CENTER_ON_BARYCENTER": self.centerOnBarycenter,
             "SHOW_VELOCITY_VECTORS": self.showVelocityVectors,

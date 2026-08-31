@@ -12,12 +12,12 @@ from src.gui.solver.simulator import State
 
 
 class Camera:
-    def __init__(self):
+    def __init__(self, minimumZoom: float = 1.25, maximumZoom: float = 5000.0):
         self.zoom = 5.0
         self.rotationX = 45.0
         self.rotationY = 225.0
-        self.minimumZoom = 1.25
-        self.maximumZoom = 5000.0
+        self.minimumZoom = float(minimumZoom)
+        self.maximumZoom = float(maximumZoom)
 
     def apply(self):
         glLoadIdentity()
@@ -45,6 +45,11 @@ class Camera:
         fixRotation = np.array([[1, 0, 0], [0, np.cos(-rotationFix), -np.sin(-rotationFix)], [0, np.sin(-rotationFix), np.cos(-rotationFix)]])
         return fixRotation @ (yRotation @ (xRotation @ camera))
 
+    def setZoomLimits(self, minimumZoom: float, maximumZoom: float):
+        self.minimumZoom = float(minimumZoom)
+        self.maximumZoom = float(maximumZoom)
+        self.zoom = max(self.minimumZoom, min(self.maximumZoom, self.zoom))
+
 
 class Universe3dViewWidget(QOpenGLWidget):
     cameraChanged = pyqtSignal()
@@ -53,7 +58,9 @@ class Universe3dViewWidget(QOpenGLWidget):
         super().__init__(parent)
         glutInit()
         self.setMouseTracking(True)
-        self.camera = Camera()
+        self.minimumExtent = 1.25
+        self.maximumExtent = 5000.0
+        self.camera = Camera(self.minimumExtent, self.maximumExtent)
         self.showBarycenter = False
         self.centerOnBarycenter = False
         self.showVelocityVectors = False
@@ -70,7 +77,7 @@ class Universe3dViewWidget(QOpenGLWidget):
         self.barycenterRenderer = BarycenterRenderer()
         self.velocityVectorRenderer = VectorFieldRenderer(color=(0.35, 0.9, 1.0, 0.9))
         self.accelerationVectorRenderer = VectorFieldRenderer(color=(1.0, 0.45, 0.2, 0.9))
-        self.gridRenderer = GridRenderer()
+        self.gridRenderer = GridRenderer(self.minimumExtent, self.maximumExtent)
         self.groupColors = {}
         self.lastPosX, self.lastPosY = 0, 0
         self.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -101,6 +108,7 @@ class Universe3dViewWidget(QOpenGLWidget):
         self.barycenterRenderer.initialize()
         self.velocityVectorRenderer.initialize()
         self.accelerationVectorRenderer.initialize()
+        self._updateProjection(max(self.width(), 1), max(self.height(), 1))
 
     def paintGL(self):
         self._uploadPendingObjectBuffers()
@@ -198,6 +206,15 @@ class Universe3dViewWidget(QOpenGLWidget):
         self.referenceAcceleration = float(referenceAcceleration)
         self.update()
 
+    def _applyExtentLimits(self):
+        self.camera.setZoomLimits(self.minimumExtent, self.maximumExtent)
+        self.gridRenderer.setExtentLimits(self.minimumExtent, self.maximumExtent)
+        if self.isValid():
+            self.makeCurrent()
+            self._updateProjection(max(self.width(), 1), max(self.height(), 1))
+            self.doneCurrent()
+        self.update()
+
     def setViewSettings(self, viewSettings: ViewSettings):
         self.showBarycenter = bool(viewSettings.showBarycenter)
         self.centerOnBarycenter = bool(viewSettings.centerOnBarycenter)
@@ -207,6 +224,11 @@ class Universe3dViewWidget(QOpenGLWidget):
         self.showAccelerationVectors = bool(viewSettings.showAccelerationVectors)
         self.accelerationVectorLength = float(viewSettings.accelerationVectorLength)
         self.referenceAcceleration = float(viewSettings.referenceAcceleration)
+        self.minimumExtent = float(viewSettings.minimumExtent)
+        self.maximumExtent = float(viewSettings.maximumExtent)
+        if self.maximumExtent < self.minimumExtent:
+            self.maximumExtent = self.minimumExtent
+        self._applyExtentLimits()
         self.update()
 
     def _placeTimeOverlay(self):
@@ -246,7 +268,7 @@ class Universe3dViewWidget(QOpenGLWidget):
         self.cameraChanged.emit()
 
     def resetView(self):
-        self.camera = Camera()
+        self.camera = Camera(self.minimumExtent, self.maximumExtent)
         self.update()
         self.cameraChanged.emit()
 
@@ -256,12 +278,17 @@ class Universe3dViewWidget(QOpenGLWidget):
     def setGroupColor(self, groupIndex: str, color: tuple):
         self.groupColors[groupIndex] = color
 
-    def resizeGL(self, w, h):
-        glViewport(0, 0, w, h)
+    def _updateProjection(self, width: int, height: int):
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
-        gluPerspective(45, w / max(h, 1), 0.1, 10000 * np.sqrt(2))
+        farPlane = max(self.maximumExtent * 2.0 * np.sqrt(2.0), 10.0)
+        nearPlane = max(self.minimumExtent * 0.01, 0.01)
+        gluPerspective(45.0, width / max(height, 1), nearPlane, farPlane)
         glMatrixMode(GL_MODELVIEW)
+
+    def resizeGL(self, w, h):
+        glViewport(0, 0, w, h)
+        self._updateProjection(w, h)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
