@@ -1,3 +1,4 @@
+import copy
 import os
 import json
 import time
@@ -180,26 +181,22 @@ class MainWindow(QMainWindow):
 
     def _toggleBarycenter(self, checked: bool):
         self.settings.view.showBarycenter = checked
-        self.simulation3dWidget.setShowBarycenter(checked)
+        self.simulation3dWidget.setViewSettings(copy.deepcopy(self.settings.view))
         self.saveSettings()
 
     def _toggleCenterOnBarycenter(self, checked: bool):
         self.settings.view.centerOnBarycenter = checked
-        self.simulation3dWidget.setCenterOnBarycenter(checked)
+        self.simulation3dWidget.setViewSettings(copy.deepcopy(self.settings.view))
         self.saveSettings()
 
     def _toggleVelocityVectors(self, checked: bool):
         self.settings.view.showVelocityVectors = checked
-        self.simulation3dWidget.velocityVectorLength = self.settings.view.velocityVectorLength
-        self.simulation3dWidget.referenceVelocity = self.settings.view.referenceVelocity
-        self.simulation3dWidget.setShowVelocityVectors(checked)
+        self.simulation3dWidget.setViewSettings(copy.deepcopy(self.settings.view))
         self.saveSettings()
 
     def _toggleAccelerationVectors(self, checked: bool):
         self.settings.view.showAccelerationVectors = checked
-        self.simulation3dWidget.accelerationVectorLength = self.settings.view.accelerationVectorLength
-        self.simulation3dWidget.referenceAcceleration = self.settings.view.referenceAcceleration
-        self.simulation3dWidget.setShowAccelerationVectors(checked)
+        self.simulation3dWidget.setViewSettings(copy.deepcopy(self.settings.view))
         self.saveSettings()
 
     @staticmethod
