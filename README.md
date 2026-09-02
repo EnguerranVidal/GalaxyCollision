@@ -1,5 +1,17 @@
 # **N-BODY SOLVER**
+[![GitHub watchers](https://badgen.net/github/watchers/EnguerranVidal/GalaxyCollision/)](https://GitHub.com/EnguerranVidal/GalaxyCollision/watchers/) [![GitHub stars](https://badgen.net/github/stars/EnguerranVidal/GalaxyCollision)](https://GitHub.com/EnguerranVidal/GalaxyCollision/stargazers/)
+![GitHub license](https://img.shields.io/github/license/EnguerranVidal/GalaxyCollision)
 
+[![GitHub branches](https://badgen.net/github/branches/EnguerranVidal/GalaxyCollision)](https://github.com/EnguerranVidal/GalaxyCollision/)
+[![GitHub commits](https://badgen.net/github/commits/EnguerranVidal/GalaxyCollision)](https://github.com/EnguerranVidal/GalaxyCollision/) 
+![GitHub last commit](https://img.shields.io/github/last-commit/EnguerranVidal/GalaxyCollision)
+![Github issus open](https://img.shields.io/github/issues-raw/EnguerranVidal/GalaxyCollision)
+![Github issus closed](https://img.shields.io/github/issues-closed-raw/EnguerranVidal/GalaxyCollision)
+
+
+![GitHub repo size](https://img.shields.io/github/repo-size/EnguerranVidal/GalaxyCollision)
+[![made-with-python](https://img.shields.io/badge/Made%20with-Python-1f425f.svg)](https://www.python.org/)
+[![Python 3.10](https://img.shields.io/badge/python-3.10-blue.svg)](https://www.python.org/downloads/release/python-31019/)
 ## SUMMARY
 
 <div style="text-align: justify"> This repository proposes a N-Body gravity simulator with a C++/CUDA engine linked to a python PyQt5 GUI and OpenGL visualization. It supports both a Newton and a <a href="https://jheer.github.io/barnes-hut/" target="_blank">Barnes-Hut</a> force calculator with CPU and GPU backends.
