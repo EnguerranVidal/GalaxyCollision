@@ -24,6 +24,7 @@ class NBodySolver(QObject):
         self.calculator = None
         self.integrator = None
         self.isRunning = False
+        self.isPaused = False
         self.simulationTime = 0.0
         self.frameInterval = 1.0 / self.MAX_FPS
 
@@ -64,25 +65,31 @@ class NBodySolver(QObject):
         if self.particles is None:
             self.initialize()
         self.isRunning = True
+        self.isPaused = False
         nextFrame = time.perf_counter()
         while self.isRunning:
-            self.integrator.step(self.particles, self.calculator)
-            self.simulationTime += self.parameters.timeStep
-            now = time.perf_counter()
-            if now >= nextFrame:
-                state = State(time=self.simulationTime,
-                              positions={"default": self._positionsAsArray()},
-                              velocities={"default": self._velocitiesAsArray()},
-                              accelerations={"default": self._accelerationsAsArray()},
-                              massCenter=self._massCenterAsArray())
-                self.positionsReady.emit(state)
-                nextFrame = now + self.frameInterval
-            if not self.cppParameters.endless and self.simulationTime >= self.cppParameters.maxTime:
-                break
-            sleepFor = nextFrame - time.perf_counter()
-            if sleepFor > 0:
-                time.sleep(sleepFor)
+            if not self.isPaused:
+                self.integrator.step(self.particles, self.calculator)
+                self.simulationTime += self.parameters.timeStep
+                now = time.perf_counter()
+                if now >= nextFrame:
+                    state = State(time=self.simulationTime,
+                                  positions={"default": self._positionsAsArray()},
+                                  velocities={"default": self._velocitiesAsArray()},
+                                  accelerations={"default": self._accelerationsAsArray()},
+                                  massCenter=self._massCenterAsArray())
+                    self.positionsReady.emit(state)
+                    nextFrame = now + self.frameInterval
+                if not self.cppParameters.endless and self.simulationTime >= self.cppParameters.maxTime:
+                    break
+                sleepFor = nextFrame - time.perf_counter()
+                if sleepFor > 0:
+                    time.sleep(sleepFor)
+            else:
+                time.sleep(0.01)
+                nextFrame = time.perf_counter()
         self.isRunning = False
+        self.isPaused = False
         self.simulationFinished.emit()
 
     @pyqtSlot()
@@ -99,7 +106,16 @@ class NBodySolver(QObject):
         self.positionsReady.emit(state)
 
     @pyqtSlot()
+    def pause(self):
+        self.isPaused = True
+
+    @pyqtSlot()
+    def resume(self):
+        self.isPaused = False
+
+    @pyqtSlot()
     def stop(self):
+        self.isPaused = False
         self.isRunning = False
 
     def _positionsAsArray(self):

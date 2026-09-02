@@ -52,6 +52,16 @@ class MainWindow(QMainWindow):
         self._restoreWindow()
 
     def _createActions(self):
+        # PAUSE/PLAY SIMULATION
+        self.pausePlayAction = QAction(self)
+        self.pausePlayAction.setCheckable(True)
+        self.pausePlayAction.setChecked(False)
+        self.pausePlayAction.setIcon(self.icons['PAUSE'])
+        self.pausePlayAction.setText("&Pause")
+        self.pausePlayAction.setStatusTip("Pause / resume the simulation")
+        self.pausePlayAction.setShortcut(Qt.Key_Space)
+        self.pausePlayAction.toggled.connect(self._togglePausePlay)
+        self.pausePlayAction.setEnabled(False)
         # SHOW BARYCENTER
         self.showBarycenterAction = QAction('&Barycenter', self)
         self.showBarycenterAction.setIcon(self.icons['CENTER_GRAVITY'])
@@ -104,6 +114,8 @@ class MainWindow(QMainWindow):
         self.fileMenu.addAction(self.quitAction)
         ### VIEW MENU ###
         self.viewMenu = self.menuBar.addMenu('&View')
+        self.viewMenu.addAction(self.pausePlayAction)
+        self.viewMenu.addSeparator()
         self.viewMenu.addAction(self.showBarycenterAction)
         self.viewMenu.addAction(self.centerOnBarycenterAction)
         self.viewMenu.addSeparator()
@@ -116,6 +128,8 @@ class MainWindow(QMainWindow):
 
     def _createIcons(self):
         self.iconPath = os.path.join(self.currentDir, f'src/assets/icons')
+        self.icons['PLAY'] = QIcon(os.path.join(self.iconPath, 'play.png'))
+        self.icons['PAUSE'] = QIcon(os.path.join(self.iconPath, 'pause.png'))
         self.icons['ARROWS_CENTER'] = QIcon(os.path.join(self.iconPath, 'arrows-center.png'))
         self.icons['BUG'] = QIcon(os.path.join(self.iconPath, 'bug.png'))
         self.icons['CENTER_GRAVITY'] = QIcon(os.path.join(self.iconPath, 'center-gravity.png'))
@@ -137,10 +151,23 @@ class MainWindow(QMainWindow):
         QTimer.singleShot(30, lambda: self._startNewSimulation(parameters))
 
     def _startNewSimulation(self, parameters: SolverParameters):
+        self.pausePlayAction.blockSignals(True)
+        self.pausePlayAction.setChecked(False)
+        self.pausePlayAction.setIcon(self.icons['PAUSE'])
+        self.pausePlayAction.setText("&Pause")
+        self.pausePlayAction.blockSignals(False)
+        self.pausePlayAction.setEnabled(True)
+        self.pausePlayAction.setStatusTip("Pause the simulation")
         QMetaObject.invokeMethod(self.nBodySolver, "prepareAndRun", Qt.QueuedConnection, Q_ARG(object, parameters))
 
     def _onSimulationFinished(self):
         self.statusBar().showMessage("Simulation finished", 3000)
+        self.pausePlayAction.setEnabled(False)
+        self.pausePlayAction.blockSignals(True)
+        self.pausePlayAction.setChecked(False)
+        self.pausePlayAction.setIcon(self.icons['PAUSE'])
+        self.pausePlayAction.setStatusTip("Pause the simulation")
+        self.pausePlayAction.blockSignals(False)
 
     def _onPositionsUpdated(self, state: State):
         if self.simulation3dWidget:
@@ -178,6 +205,19 @@ class MainWindow(QMainWindow):
         screenCenter = QDesktopWidget().availableGeometry().center()
         frameGeometry.moveCenter(screenCenter)
         self.move(frameGeometry.topLeft())
+
+    @pyqtSlot(bool)
+    def _togglePausePlay(self, paused: bool):
+        if paused:
+            self.pausePlayAction.setIcon(self.icons['PLAY'])
+            self.pausePlayAction.setText("&Play")
+            self.pausePlayAction.setStatusTip("Resume the simulation")
+            self.nBodySolver.isPaused = True
+        else:
+            self.pausePlayAction.setIcon(self.icons['PAUSE'])
+            self.pausePlayAction.setText("&Pause")
+            self.pausePlayAction.setStatusTip("Pause the simulation")
+            self.nBodySolver.isPaused = False
 
     def _toggleBarycenter(self, checked: bool):
         self.settings.view.showBarycenter = checked
