@@ -7,9 +7,9 @@ from PyQt5.QtCore import QUrl, QTimer, Qt, QThread, Q_ARG, QMetaObject, pyqtSlot
 from PyQt5.QtGui import QIcon, QDesktopServices
 from PyQt5.QtWidgets import *
 
-from src.gui.solver.simulator import NBodySimulator, State
-from src.gui.solver.parameters import SimulatorParameters
-from src.gui.configEditor import SimulationConfigEditorDock
+from src.gui.solver.general import NBodySolver, State
+from src.gui.solver.parameters import SolverParameters
+from src.gui.configEditor import SolverConfigEditorDock
 from src.gui.visualizers.view3d import Universe3dViewWidget
 from src.gui.settings import UiSettings
 
@@ -28,12 +28,12 @@ class MainWindow(QMainWindow):
         # SETTING UP USER INTERFACE & RUNNER THREAD
         self.activeParameters = self.settings.parameters
         self.workerThread = QThread(self)
-        self.nBodySimulator = NBodySimulator(self.activeParameters)
-        self.nBodySimulator.positionsReady.connect(self._onPositionsUpdated)
-        self.nBodySimulator.simulationFinished.connect(self._onSimulationFinished)
-        self.nBodySimulator.moveToThread(self.workerThread)
+        self.nBodySolver = NBodySolver(self.activeParameters)
+        self.nBodySolver.positionsReady.connect(self._onPositionsUpdated)
+        self.nBodySolver.simulationFinished.connect(self._onSimulationFinished)
+        self.nBodySolver.moveToThread(self.workerThread)
         self.workerThread.start()
-        self.configEditorDock = SimulationConfigEditorDock(self.activeParameters, self)
+        self.configEditorDock = SolverConfigEditorDock(self.activeParameters, self)
         self.configEditorDock.launchSimulationPressed.connect(self._onLaunchSimulation)
         self.configEditorDock.resetSimulationPressed.connect(self._onResetSimulation)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.configEditorDock)
@@ -43,7 +43,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.stackedSimulationWidget)
         self.simulation3dWidget.setViewSettings(self.settings.view)
         print("Main thread:", QThread.currentThread())
-        print("Simulator thread:", self.nBodySimulator.thread())
+        print("Simulator thread:", self.nBodySolver.thread())
 
         self._createIcons()
         self._createActions()
@@ -121,8 +121,8 @@ class MainWindow(QMainWindow):
         self.icons['CENTER_GRAVITY'] = QIcon(os.path.join(self.iconPath, 'center-gravity.png'))
         self.icons['GITHUB'] = QIcon(os.path.join(self.iconPath, 'github.png'))
 
-    @pyqtSlot(SimulatorParameters)
-    def _onLaunchSimulation(self, parameters: SimulatorParameters):
+    @pyqtSlot(SolverParameters)
+    def _onLaunchSimulation(self, parameters: SolverParameters):
         self.activeParameters = parameters
         self.settings.parameters = parameters
         self.saveSettings()
@@ -132,12 +132,12 @@ class MainWindow(QMainWindow):
     def _onResetSimulation(self):
         self._restartSimulation(self.activeParameters)
 
-    def _restartSimulation(self, parameters: SimulatorParameters):
-        self.nBodySimulator.stop()
+    def _restartSimulation(self, parameters: SolverParameters):
+        self.nBodySolver.stop()
         QTimer.singleShot(30, lambda: self._startNewSimulation(parameters))
 
-    def _startNewSimulation(self, parameters: SimulatorParameters):
-        QMetaObject.invokeMethod(self.nBodySimulator, "prepareAndRun", Qt.QueuedConnection, Q_ARG(object, parameters))
+    def _startNewSimulation(self, parameters: SolverParameters):
+        QMetaObject.invokeMethod(self.nBodySolver, "prepareAndRun", Qt.QueuedConnection, Q_ARG(object, parameters))
 
     def _onSimulationFinished(self):
         self.statusBar().showMessage("Simulation finished", 3000)
@@ -223,9 +223,9 @@ class MainWindow(QMainWindow):
         self.fpsLabel.setText(f'FPS : {self.avgFps:.1f}')
 
     def closeEvent(self, event):
-        if self.nBodySimulator and self.nBodySimulator.isRunning:
+        if self.nBodySolver and self.nBodySolver.isRunning:
             print("Closing: Stopping simulation...")
-            self.nBodySimulator.stop()
+            self.nBodySolver.stop()
             loop = QEventLoop()
             QTimer.singleShot(300, loop.quit)
             finished = False
@@ -235,9 +235,9 @@ class MainWindow(QMainWindow):
                 finished = True
                 loop.quit()
 
-            connection = self.nBodySimulator.simulationFinished.connect(onFinished)
+            connection = self.nBodySolver.simulationFinished.connect(onFinished)
             loop.exec_()
-            self.nBodySimulator.simulationFinished.disconnect(connection)
+            self.nBodySolver.simulationFinished.disconnect(connection)
             if not finished:
                 print("Warning: Simulator did not stop gracefully within timeout")
         self.settings.parameters = self.configEditorDock.getUiParameters()

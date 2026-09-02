@@ -1,6 +1,6 @@
 from dataclasses import asdict, dataclass, field
 
-from src.gui.solver.parameters import SimulatorParameters
+from src.gui.solver.parameters import SolverParameters
 
 
 @dataclass
@@ -67,14 +67,14 @@ class ViewSettings:
 @dataclass
 class UiSettings:
     window: WindowSettings = field(default_factory=WindowSettings)
-    parameters: SimulatorParameters = field(default_factory=SimulatorParameters)
+    parameters: SolverParameters = field(default_factory=SolverParameters)
     view: ViewSettings = field(default_factory=ViewSettings)
 
     @classmethod
     def fromDict(cls, data: dict | None):
         data = data or {}
         return cls(window=WindowSettings.fromDict(data.get("WINDOW", WindowSettings())),
-                   parameters=SimulatorParameters.fromDict(data.get("PARAMETERS", SimulatorParameters())),
+                   parameters=SolverParameters.fromDict(data.get("PARAMETERS", SolverParameters())),
                    view=ViewSettings.fromDict(data.get("VIEW", ViewSettings())))
 
     def toDict(self):

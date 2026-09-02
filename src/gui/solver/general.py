@@ -10,7 +10,7 @@ from src.gui.solver.parameters import *
 from src.gui.solver.distributions import *
 
 
-class NBodySimulator(QObject):
+class NBodySolver(QObject):
     positionsReady = pyqtSignal(object)
     simulationFinished = pyqtSignal()
 
@@ -35,7 +35,7 @@ class NBodySimulator(QObject):
         self.simulationTime = 0.0
 
     @staticmethod
-    def _createCalculator(parameters: engine.SimulatorParameters):
+    def _createCalculator(parameters: engine.SolverParameters):
         calculatorType = parameters.calculatorType.upper()
         if calculatorType == "BARNES_HUT":
             calculator = engine.BarnesHutCalculator(parameters.theta, parameters.gravitationalConstant)
@@ -44,7 +44,7 @@ class NBodySimulator(QObject):
         return calculator
 
     @staticmethod
-    def _createIntegrator(parameters: engine.SimulatorParameters):
+    def _createIntegrator(parameters: engine.SolverParameters):
         integratorType = parameters.integratorType.upper()
         if integratorType == "RK4":
             integrator = engine.RK4Integrator(parameters.timeStep)
@@ -52,7 +52,7 @@ class NBodySimulator(QObject):
             integrator = engine.EulerIntegrator(parameters.timeStep)
         return integrator
 
-    @pyqtSlot(SimulatorParameters)
+    @pyqtSlot(SolverParameters)
     def prepareAndRun(self, parameters):
         self.parameters = parameters
         self.particles = None

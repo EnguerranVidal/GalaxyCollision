@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import *
 
 from src.gui.visualizers.renderers import ParticlesRenderer, BarycenterRenderer, VectorFieldRenderer, GridRenderer
 from src.gui.settings import ViewSettings
-from src.gui.solver.simulator import State
+from src.gui.solver.general import State
 
 
 class Camera:

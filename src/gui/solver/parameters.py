@@ -124,7 +124,7 @@ class GalaxyDistributionParameters:
 
 
 @dataclass
-class SimulatorParameters:
+class SolverParameters:
     name: str = "Untitled Simulation"
     timeStep: float = 5E-3
     nbParticles: int = 10000
@@ -160,6 +160,8 @@ class SimulatorParameters:
             "timeStep": self.timeStep,
             "nbParticles": self.nbParticles,
             "theta": self.theta,
+            "tileSize": self.tileSize,
+            "blockSize": self.blockSize,
             "seed": self.seed,
             "device": self.device,
             "gravitationalConstant": self.gravitationalConstant,
@@ -174,7 +176,7 @@ class SimulatorParameters:
         }
 
     def __eq__(self, other) -> bool:
-        if not isinstance(other, SimulatorParameters):
+        if not isinstance(other, SolverParameters):
             return NotImplemented
         mainEquality = (
                 self.name == other.name and
@@ -199,10 +201,10 @@ class SimulatorParameters:
             return self.basicDistributionParameters == other.basicDistributionParameters
 
     def __repr__(self):
-        return f"SimulatorParameters(name='{self.name}', seed={self.seed}, device={self.device}, distribution={self.distributionType}, particles={self.nbParticles})"
+        return f"SolverParameters(name='{self.name}', seed={self.seed}, device={self.device}, distribution={self.distributionType}, particles={self.nbParticles})"
 
     def toCpp(self):
-        cpp = engine.SimulatorParameters()
+        cpp = engine.SolverParameters()
         cpp.name = self.name
         cpp.timeStep = self.timeStep
         cpp.nbParticles = self.nbParticles
@@ -223,7 +225,7 @@ class SimulatorParameters:
         return cpp
 
     @classmethod
-    def fromCpp(cls, cpp):
+    def fromCpp(cls, cpp: engine.SolverParameters):
         return cls(
             name = cpp.name,
             timeStep = cpp.timeStep,

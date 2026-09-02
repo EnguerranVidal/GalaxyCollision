@@ -4,16 +4,16 @@ from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QIntValidator
 from PyQt5.QtWidgets import *
 
-from src.gui.solver.parameters import SimulatorParameters, BasicDistributionParameters, GalaxyDistributionParameters
+from src.gui.solver.parameters import SolverParameters, BasicDistributionParameters, GalaxyDistributionParameters
 
 
-class SimulationConfigEditorDock(QDockWidget):
+class SolverConfigEditorDock(QDockWidget):
     launchSimulationPressed = pyqtSignal(object)
     resetSimulationPressed = pyqtSignal(object)
 
-    def __init__(self, initialParameters: SimulatorParameters, parent=None):
-        super().__init__("Simulation Configuration", parent)
-        self.activeParameters = copy.deepcopy(initialParameters or SimulatorParameters())
+    def __init__(self, initialParameters: SolverParameters, parent=None):
+        super().__init__("Solver Configuration", parent)
+        self.activeParameters = copy.deepcopy(initialParameters or SolverParameters())
         self.uiParameters = copy.deepcopy(self.activeParameters)
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
         self.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
@@ -70,7 +70,7 @@ class SimulationConfigEditorDock(QDockWidget):
         seedLayout = QHBoxLayout()
         seedLayout.addWidget(self.seedEdit)
         seedLayout.addWidget(self.randomSeedButton)
-        simulationCoreGroup = QGroupBox("Core Simulation Parameters")
+        simulationCoreGroup = QGroupBox("Core Solver Parameters")
         simulationCoreForm = QFormLayout(simulationCoreGroup)
         simulationCoreForm.addRow("Distribution Type:", self.distributionTypeCombo)
         simulationCoreForm.addRow("Seed:", seedLayout)

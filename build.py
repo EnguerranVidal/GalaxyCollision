@@ -127,8 +127,8 @@ def build(clean: bool = False, withCuda: bool = False)-> int:
     sys.modules.pop("engine", None)
     import engine
     print('engine.__file__ =', engine.__file__)
-    ok = hasattr(engine, 'SimulatorParameters')
-    print('has SimulatorParameters:', ok)
+    ok = hasattr(engine, 'SolverParameters')
+    print('has SolverParameters:', ok)
     if not ok or engine.__file__ is None:
         return 1
     print('OK — run:  python main.py')

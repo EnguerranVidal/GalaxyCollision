@@ -6,7 +6,7 @@
 #include "GalaxyDistributionParameters.h"
 
 
-struct SimulatorParameters
+struct SolverParameters
 {
     std::string name = "Untitled Simulation";
     float timeStep = 0.001f;

@@ -1,7 +1,7 @@
 import numpy as np
 
 import engine
-from src.gui.solver.parameters import SimulatorParameters
+from src.gui.solver.parameters import SolverParameters
 
 
 def toParticleGroup(positions: np.ndarray, velocities: np.ndarray, masses: np.ndarray, device: str) -> engine.ParticleGroup:
@@ -12,7 +12,7 @@ def toParticleGroup(positions: np.ndarray, velocities: np.ndarray, masses: np.nd
     return particleGroup
 
 
-def generateBasicDistribution(parameters: SimulatorParameters) -> engine.ParticleGroup:
+def generateBasicDistribution(parameters: SolverParameters) -> engine.ParticleGroup:
     randomGenerator = np.random.default_rng(parameters.seed if parameters.seed is not None else None)
     n = parameters.nbParticles
     distributionParameters = parameters.basicDistributionParameters
@@ -22,7 +22,7 @@ def generateBasicDistribution(parameters: SimulatorParameters) -> engine.Particl
     return toParticleGroup(positions, velocities, masses, parameters.device)
 
 
-def generateGalaxyDistribution(parameters: SimulatorParameters) -> engine.ParticleGroup:
+def generateGalaxyDistribution(parameters: SolverParameters) -> engine.ParticleGroup:
     randomGenerator = np.random.default_rng(parameters.seed if parameters.seed is not None else None)
     nbParticles = parameters.nbParticles
     distributionParameters = parameters.galaxyDistributionParameters
@@ -80,7 +80,7 @@ def generateGalaxyDistribution(parameters: SimulatorParameters) -> engine.Partic
     return toParticleGroup(positions, velocities, masses, parameters.device)
 
 
-def generate(parameters: SimulatorParameters) -> engine.ParticleGroup:
+def generate(parameters: SolverParameters) -> engine.ParticleGroup:
     if parameters.distributionType.upper() == "GALAXY":
         return generateGalaxyDistribution(parameters)
     return generateBasicDistribution(parameters)
