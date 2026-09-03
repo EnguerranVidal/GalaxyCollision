@@ -8,7 +8,7 @@ from OpenGL.GL import *
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 from PyQt5.QtWidgets import *
 
-from src.gui.visualizers.renderers import ParticlesRenderer, BarycenterRenderer, VectorFieldRenderer, GridRenderer
+from src.gui.visualizers.renderers import ParticlesRenderer, SinglePointRenderer, VectorFieldRenderer, GridRenderer
 from src.gui.settings import ViewSettings
 from src.gui.solver.general import State
 
@@ -53,6 +53,20 @@ class Camera:
         self.zoom = max(self.minimumZoom, min(self.maximumZoom, self.zoom))
 
 
+@dataclass
+class SelectedParticle:
+    particleIndex: int | None = None
+    particleGroup: str | None = None
+
+    def unselect(self):
+        self.particleIndex = None
+        self.particleGroup = None
+
+    def select(self, particleIndex, particleGroup):
+        self.particleIndex = particleIndex
+        self.particleGroup = particleGroup
+
+
 class Universe3dViewWidget(QOpenGLWidget):
     cameraChanged = pyqtSignal()
 
@@ -67,12 +81,25 @@ class Universe3dViewWidget(QOpenGLWidget):
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self._showContextMenu)
 
+        # PARTICLE SELECTION
+        self.selectedParticle = SelectedParticle()
+        self.lastPositions = {}
+        self._pressX, self._pressY = 0, 0
+        self._dragged = False
+        self._ignoreNextRelease = False
+        self.focusOnSelectedParticle = False
+        self.pulsePhase = 0.0
+        self.pulseTimer = QTimer(self)
+        self.pulseTimer.setInterval(16)
+        self.pulseTimer.timeout.connect(self._onPulseTick)
+
         # RENDERERS AND OBJECT BUFFERS
         self.groupColors = {}
         self.pendingObjectBufferUpdates = {}
         self.gridRenderer = GridRenderer(self.viewSettings.minimumExtent, self.viewSettings.maximumExtent)
         self.particlesRenderer = ParticlesRenderer()
-        self.barycenterRenderer = BarycenterRenderer()
+        self.barycenterRenderer = SinglePointRenderer()
+        self.selectionRenderer = SinglePointRenderer()
         self.velocityVectorRenderer = VectorFieldRenderer(color=(0.35, 0.9, 1.0, 0.9))
         self.accelerationVectorRenderer = VectorFieldRenderer(color=(1.0, 0.45, 0.2, 0.9))
         self.velocityVectorVertices = None
@@ -103,6 +130,7 @@ class Universe3dViewWidget(QOpenGLWidget):
         glShadeModel(GL_SMOOTH)
         self.particlesRenderer.initialize()
         self.barycenterRenderer.initialize()
+        self.selectionRenderer.initialize()
         self.velocityVectorRenderer.initialize()
         self.accelerationVectorRenderer.initialize()
         self._updateProjection(max(self.width(), 1), max(self.height(), 1))
@@ -111,10 +139,18 @@ class Universe3dViewWidget(QOpenGLWidget):
         self._uploadPendingObjectBuffers()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         self.camera.apply()
+        plotOrigin = self.massCenter if self.viewSettings.centerOnBarycenter else np.zeros(3, dtype=np.float32)
+        # FOCUS ON SELECTED PARTICLE
+        if self.focusOnSelectedParticle:
+            particlePosition = self._selectedWorldPosition()
+            if particlePosition is not None:
+                glTranslatef(-float(particlePosition[0]- plotOrigin[0]), -float(particlePosition[1] - plotOrigin[1]), -float(particlePosition[2] - plotOrigin[2]))
         self.gridRenderer.render(self.camera.zoom)
         if self.viewSettings.centerOnBarycenter:
-            glTranslatef(-float(self.massCenter[0]),  -float(self.massCenter[1]), -float(self.massCenter[2]))
+            glTranslatef(-float(plotOrigin[0]),  -float(plotOrigin[1]), -float(plotOrigin[2]))
         glDisable(GL_LIGHTING)
+        if self.viewSettings.showBarycenter:
+            self.barycenterRenderer.render(self.massCenter, pointSize=14.0)
         self.particlesRenderer.renderAll(pointSize=4.0, refDistance=max(self.camera.zoom, 0.5), minSize=1.5, maxSize=16.0)
         if self.viewSettings.showVelocityVectors and self.velocityVectorVertices is not None:
             self.velocityVectorRenderer.update(self.velocityVectorVertices)
@@ -122,16 +158,32 @@ class Universe3dViewWidget(QOpenGLWidget):
         if self.viewSettings.showAccelerationVectors and self.accelerationVectorVertices is not None:
             self.accelerationVectorRenderer.update(self.accelerationVectorVertices)
             self.accelerationVectorRenderer.render(lineWidth=1.5)
-        if self.viewSettings.showBarycenter:
-            self.barycenterRenderer.render(self.massCenter, pointSize=14.0)
+        if self.selectedParticle.particleIndex is not None:
+            particlePosition = self._selectedWorldPosition()
+            if particlePosition is not None:
+                drawPos = np.asarray(particlePosition, dtype=np.float32)
+                pulse = 1.0 + 0.35 * np.sin(self.pulsePhase)
+                self.selectionRenderer.render(drawPos, pointSize=20.0 * pulse, color=(1.0, 0.95, 0.2, 1.0))
 
     def updateState(self, state: State):
         self.pendingObjectBufferUpdates.clear()
+        # PARTICLES POSITIONS
         for groupIndex, positionArray in state.positions.items():
             if groupIndex not in self.groupColors:
                 self.groupColors[groupIndex] = (0.9, 0.7, 0.3, 0.95)
             self.pendingObjectBufferUpdates[groupIndex] = positionArray
         self.massCenter = np.asarray(state.massCenter, dtype=np.float32).reshape(3)
+        # SELECTION UPDATE
+        self.lastPositions = {groupIndex: np.ascontiguousarray(positionArray, dtype=np.float32) for groupIndex, positionArray in state.positions.items()}
+        if self.selectedParticle.particleIndex is not None:
+            groupName = self.selectedParticle.particleGroup
+            particleIndex = self.selectedParticle.particleIndex
+            positions = self.lastPositions.get("default" if groupName is None else groupName, None)
+            if positions is None or particleIndex >= len(positions):
+                self.selectedParticle.unselect()
+                self.focusOnSelectedParticle = False
+                self.pulseTimer.stop()
+        # VELOCITY ARRAY FIELD
         if self.viewSettings.showVelocityVectors and state.velocities:
             chunks = []
             nbTotal = sum(len(pos) for pos in state.positions.values())
@@ -146,6 +198,7 @@ class Universe3dViewWidget(QOpenGLWidget):
             self.velocityVectorVertices = np.vstack(chunks) if chunks else None
         else:
             self.velocityVectorVertices = None
+        # ACCELERATION ARRAY FIELD
         if self.viewSettings.showAccelerationVectors and state.accelerations:
             chunks = []
             nbTotal = sum(len(pos) for pos in state.positions.values())
@@ -160,6 +213,7 @@ class Universe3dViewWidget(QOpenGLWidget):
             self.accelerationVectorVertices = np.vstack(chunks) if chunks else None
         else:
             self.accelerationVectorVertices = None
+        # SIMULATION TIME OVERLAY
         self.timeOverlay.setText(f"Time: {state.time:.3f}")
         self.timeOverlay.adjustSize()
         self._placeTimeOverlay()
@@ -189,6 +243,13 @@ class Universe3dViewWidget(QOpenGLWidget):
         self.timeOverlay.move(max(0, x), max(0, y))
         self.timeOverlay.raise_()
 
+    def _onPulseTick(self):
+        if self.selectedParticle.particleIndex is None:
+            self.pulseTimer.stop()
+            return
+        self.pulsePhase += 0.15
+        self.update()
+
     def _uploadPendingObjectBuffers(self):
         if not self.pendingObjectBufferUpdates:
             return
@@ -198,20 +259,101 @@ class Universe3dViewWidget(QOpenGLWidget):
             self.particlesRenderer.updateGroupPositions(groupIndex, positions)
         self.pendingObjectBufferUpdates.clear()
 
+    def _pickParticle(self, xMouse: int, yMouse: int, maxPixelDistance: float = 15.0):
+        if not self.lastPositions:
+            return None, None
+        self.makeCurrent()
+        ratio = float(self.devicePixelRatioF())
+        xMouse = xMouse * ratio
+        yMouse = yMouse * ratio
+        maxPixelDistance = maxPixelDistance * ratio
+        viewModel = (GLdouble * 16)()
+        viewProjection = (GLdouble * 16)()
+        viewPort = (GLint * 4)()
+        glMatrixMode(GL_MODELVIEW)
+        glPushMatrix()
+        self.camera.apply()
+        if self.viewSettings.centerOnBarycenter:
+            glTranslatef(-float(self.massCenter[0]), -float(self.massCenter[1]), -float(self.massCenter[2]))
+        glGetDoublev(GL_MODELVIEW_MATRIX, viewModel)
+        glGetDoublev(GL_PROJECTION_MATRIX, viewProjection)
+        glGetIntegerv(GL_VIEWPORT, viewPort)
+        glPopMatrix()
+        bestDistanceSquared = maxPixelDistance * maxPixelDistance
+        bestGroup, bestIndex = None, None
+        yView = viewPort[3] - yMouse
+        for groupIndex, positions in self.lastPositions.items():
+            for i, (x, y, z) in enumerate(positions):
+                xWindow, yWindow, zWindow = gluProject(float(x), float(y), float(z), viewModel, viewProjection, viewPort)
+                if zWindow < 0.0 or zWindow > 1.0:
+                    continue
+                xDelta, yDelta = xWindow - xMouse, yWindow - yView
+                squaredDistance = xDelta * xDelta + yDelta * yDelta
+                if squaredDistance < bestDistanceSquared:
+                    bestDistanceSquared = squaredDistance
+                    bestGroup, bestIndex = groupIndex, i
+        return bestGroup, bestIndex
+
+    def _selectedWorldPosition(self):
+        groupName = self.selectedParticle.particleGroup
+        particleIndex = self.selectedParticle.particleIndex
+        if groupName is None or particleIndex is None:
+            return None
+        positions = self.lastPositions.get(groupName)
+        if positions is None or particleIndex >= len(positions):
+            return None
+        return positions[particleIndex]
+
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
+            self._pressX = event.x()
+            self._pressY = event.y()
             self.lastPosX = event.x()
             self.lastPosY = event.y()
+            self._dragged = False
 
     def mouseMoveEvent(self, event):
         if event.buttons() & Qt.LeftButton:
             dx = event.x() - self.lastPosX
             dy = event.y() - self.lastPosY
+            if abs(event.x() - self._pressX) > 5 or abs(event.y() - self._pressY) > 5:
+                self._dragged = True
             self.camera.rotate(dx, dy)
             self.lastPosX = event.x()
             self.lastPosY = event.y()
             self.update()
             self.cameraChanged.emit()
+
+    def mouseReleaseEvent(self, event):
+        if event.button() != Qt.LeftButton or self._dragged:
+            return
+        if self._ignoreNextRelease:
+            self._ignoreNextRelease = False
+            return
+        group, index = self._pickParticle(event.x(), event.y())
+        if group is None:
+            self.selectedParticle.unselect()
+            self.focusOnSelectedParticle = False
+            self.pulseTimer.stop()
+        else:
+            self.selectedParticle.select(index, group)
+            self.focusOnSelectedParticle = False
+            self.pulsePhase = 0.0
+            self.pulseTimer.start()
+        self.update()
+
+    def mouseDoubleClickEvent(self, event):
+        if event.button() != Qt.LeftButton:
+            return
+        group, index = self._pickParticle(event.x(), event.y())
+        if group is None:
+            return
+        self.selectedParticle.select(index, group)
+        self.focusOnSelectedParticle = True
+        self._ignoreNextRelease = True
+        self.pulsePhase = 0.0
+        self.pulseTimer.start()
+        self.update()
 
     def wheelEvent(self, event):
         delta = event.angleDelta().y() / 120.0

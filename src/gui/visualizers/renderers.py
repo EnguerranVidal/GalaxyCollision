@@ -146,7 +146,7 @@ class ParticlesRenderer:
             self.shader = None
 
 
-class BarycenterRenderer:
+class SinglePointRenderer:
     def __init__(self):
         self.vbo = None
         self.shader = None
@@ -156,9 +156,9 @@ class BarycenterRenderer:
 
     def initialize(self):
         self.vbo = glGenBuffers(1)
-        with open("src/assets/shaders/barycenter/barycenter.vert") as f:
+        with open("src/assets/shaders/single/single.vert") as f:
             vert = f.read()
-        with open("src/assets/shaders/barycenter/barycenter.frag") as f:
+        with open("src/assets/shaders/single/single.frag") as f:
             frag = f.read()
         vertexShader = compileShader(vert, GL_VERTEX_SHADER)
         fragmentShader = compileShader(frag, GL_FRAGMENT_SHADER)
