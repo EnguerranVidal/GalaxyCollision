@@ -139,15 +139,14 @@ class Universe3dViewWidget(QOpenGLWidget):
         self._uploadPendingObjectBuffers()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         self.camera.apply()
-        plotOrigin = self.massCenter if self.viewSettings.centerOnBarycenter else np.zeros(3, dtype=np.float32)
+        plotOrigin = self._plotOrigin()
         # FOCUS ON SELECTED PARTICLE
         if self.focusOnSelectedParticle:
             particlePosition = self._selectedWorldPosition()
             if particlePosition is not None:
                 glTranslatef(-float(particlePosition[0]- plotOrigin[0]), -float(particlePosition[1] - plotOrigin[1]), -float(particlePosition[2] - plotOrigin[2]))
         self.gridRenderer.render(self.camera.zoom)
-        if self.viewSettings.centerOnBarycenter:
-            glTranslatef(-float(plotOrigin[0]),  -float(plotOrigin[1]), -float(plotOrigin[2]))
+        glTranslatef(-float(plotOrigin[0]),  -float(plotOrigin[1]), -float(plotOrigin[2]))
         glDisable(GL_LIGHTING)
         if self.viewSettings.showBarycenter:
             self.barycenterRenderer.render(self.massCenter, pointSize=14.0)
@@ -273,8 +272,8 @@ class Universe3dViewWidget(QOpenGLWidget):
         glMatrixMode(GL_MODELVIEW)
         glPushMatrix()
         self.camera.apply()
-        if self.viewSettings.centerOnBarycenter:
-            glTranslatef(-float(self.massCenter[0]), -float(self.massCenter[1]), -float(self.massCenter[2]))
+        plotOrigin = self._plotOrigin()
+        glTranslatef( -float(plotOrigin[0]), -float(plotOrigin[1]), -float(plotOrigin[2]))
         glGetDoublev(GL_MODELVIEW_MATRIX, viewModel)
         glGetDoublev(GL_PROJECTION_MATRIX, viewProjection)
         glGetIntegerv(GL_VIEWPORT, viewPort)
@@ -303,6 +302,9 @@ class Universe3dViewWidget(QOpenGLWidget):
         if positions is None or particleIndex >= len(positions):
             return None
         return positions[particleIndex]
+
+    def _plotOrigin(self):
+        return self.massCenter if self.viewSettings.centerOnBarycenter else np.zeros(3, dtype=np.float32)
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
