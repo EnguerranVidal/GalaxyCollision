@@ -145,7 +145,10 @@ class Universe3dViewWidget(QOpenGLWidget):
             particlePosition = self._selectedWorldPosition()
             if particlePosition is not None:
                 glTranslatef(-float(particlePosition[0]- plotOrigin[0]), -float(particlePosition[1] - plotOrigin[1]), -float(particlePosition[2] - plotOrigin[2]))
-        self.gridRenderer.render(self.camera.zoom)
+        # GRID SCALING & RENDERING
+        gridScale = max(self.camera.zoom, self._gridReferenceDistance())
+        self.gridRenderer.render(gridScale)
+        # PARTICLE & BARYCENTER RENDERING
         glTranslatef(-float(plotOrigin[0]),  -float(plotOrigin[1]), -float(plotOrigin[2]))
         glDisable(GL_LIGHTING)
         if self.viewSettings.showBarycenter:
@@ -305,6 +308,19 @@ class Universe3dViewWidget(QOpenGLWidget):
 
     def _plotOrigin(self):
         return self.massCenter if self.viewSettings.centerOnBarycenter else np.zeros(3, dtype=np.float32)
+
+    def _gridReferenceDistance(self):
+        plotOrigin = self._plotOrigin()
+        cameraOffset = np.asarray(self.camera.getPosition(), dtype=float)
+        if self.focusOnSelectedParticle:
+            particlePosition = self._selectedWorldPosition()
+            orbitTarget = np.asarray(particlePosition, dtype=float) if particlePosition is not None else plotOrigin
+        else:
+            orbitTarget = plotOrigin
+        cameraWorld = orbitTarget + cameraOffset
+        delta = cameraWorld - np.asarray(plotOrigin, dtype=float)
+        horizontal = float(np.linalg.norm(delta[:2]))
+        return max(horizontal, float(self.viewSettings.minimumExtent))
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:

@@ -1,4 +1,4 @@
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 
 from src.gui.solver.parameters import SolverParameters
 
@@ -23,7 +23,7 @@ class WindowSettings:
 @dataclass
 class ViewSettings:
     minimumExtent: float = 1.25
-    maximumExtent: float = 5000.0
+    maximumExtent: float = 10000.0
     showBarycenter: bool = False
     centerOnBarycenter: bool = False
     showVelocityVectors: bool = False
