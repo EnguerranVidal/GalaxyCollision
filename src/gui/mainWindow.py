@@ -92,6 +92,11 @@ class MainWindow(QMainWindow):
         self.showAccelerationVectorsAction.setChecked(self.settings.view.showAccelerationVectors)
         self.showAccelerationVectorsAction.toggled.connect(self._toggleAccelerationVectors)
         self.showAccelerationVectorsAction.setIconVisibleInMenu(False)
+        # SHOW SIMULATION MINIMAP
+        self.showMinimapAction = QAction("&Minimap", self)
+        self.showMinimapAction.setCheckable(True)
+        self.showMinimapAction.setChecked(self.settings.view.showMinimap)
+        self.showMinimapAction.toggled.connect(self._toggleMinimap)
         # VISIT GITHUB
         self.githubAction = QAction('&Visit GitHub', self)
         self.githubAction.setIcon(self.icons['GITHUB'])
@@ -236,6 +241,11 @@ class MainWindow(QMainWindow):
 
     def _toggleAccelerationVectors(self, checked: bool):
         self.settings.view.showAccelerationVectors = checked
+        self.simulation3dWidget.setViewSettings(copy.deepcopy(self.settings.view))
+        self.saveSettings()
+
+    def _toggleMinimap(self, checked: bool):
+        self.settings.view.showMinimap = checked
         self.simulation3dWidget.setViewSettings(copy.deepcopy(self.settings.view))
         self.saveSettings()
 

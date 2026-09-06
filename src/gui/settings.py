@@ -32,6 +32,7 @@ class ViewSettings:
     showAccelerationVectors: bool = False
     accelerationVectorLength: float = 0.25
     referenceAcceleration: float = 1E1
+    showMinimap: bool = False
 
     @classmethod
     def fromDict(cls, data=None):
