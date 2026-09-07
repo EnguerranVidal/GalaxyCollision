@@ -126,6 +126,7 @@ class MainWindow(QMainWindow):
         self.viewMenu.addSeparator()
         self.viewMenu.addAction(self.showVelocityVectorsAction)
         self.viewMenu.addAction(self.showAccelerationVectorsAction)
+        self.viewMenu.addAction(self.showMinimapAction)
         ### HELP MENU ###
         self.helpMenu = self.menuBar.addMenu('&Help')
         self.helpMenu.addAction(self.githubAction)

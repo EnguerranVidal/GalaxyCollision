@@ -427,3 +427,170 @@ class GridRenderer:
     def setExtentLimits(self, minimumExtent: float, maximumExtent: float):
         self.minimumExtent = float(minimumExtent)
         self.maximumExtent = float(maximumExtent)
+
+
+class MinimapRenderer:
+    def __init__(self):
+        self.vbo = None
+        self.count = 0
+        self.capacity = 0
+        self.ready = False
+
+    def initialize(self):
+        self.vbo = glGenBuffers(1)
+        self.ready = True
+
+    def clear(self):
+        self.count = 0
+
+    def render(self, widgetWidth: int, widgetHeight: int, devicePixelRatio: float, plotOrigin: np.ndarray,
+               cameraWorld: np.ndarray, lookTarget: np.ndarray, isoZoom: float, particlesRenderer,
+               sizeLogical: float = 180.0, marginLogical: float = 12.0, cylinderSegments: int = 48):
+        if not self.ready:
+            return
+        ratio = float(devicePixelRatio)
+        margin = int(marginLogical * ratio)
+        size = int(sizeLogical * ratio)
+        widthWindow, heightWindow = max(int(widgetWidth * ratio), 1), max(int(widgetHeight * ratio), 1)
+        if size < 32 or widthWindow < size + 2 * margin or heightWindow < size + 2 * margin:
+            return
+        xBottomLeft, yBottomLeft = widthWindow - margin - size, heightWindow - margin - size
+        plotOrigin, cameraPosition, lookTarget = (np.asarray(v, dtype=np.float32).reshape(3) for v in (plotOrigin, cameraWorld, lookTarget))
+        isoZoom = max(float(isoZoom), 1e-3)
+        cylinderRadius, halfHeight = isoZoom, isoZoom * 0.72
+        previousViewport = (GLint * 4)()
+        glGetIntegerv(GL_VIEWPORT, previousViewport)
+        scissorWasOn = bool(glIsEnabled(GL_SCISSOR_TEST))
+        glMatrixMode(GL_PROJECTION)
+        glPushMatrix()
+        glMatrixMode(GL_MODELVIEW)
+        glPushMatrix()
+        try:
+            # MINIMAP BACKGROUND RENDERING
+            glEnable(GL_SCISSOR_TEST)
+            glScissor(xBottomLeft, yBottomLeft, size, size)
+            glViewport(xBottomLeft, yBottomLeft, size, size)
+            glMatrixMode(GL_PROJECTION)
+            glLoadIdentity()
+            glOrtho(0, 1, 0, 1, -1, 1)
+            glMatrixMode(GL_MODELVIEW)
+            glLoadIdentity()
+            glDisable(GL_DEPTH_TEST)
+            glUseProgram(0)
+            glColor4f(0.04, 0.05, 0.07, 0.90)
+            glBegin(GL_QUADS)
+            glVertex2f(0, 0)
+            glVertex2f(1, 0)
+            glVertex2f(1, 1)
+            glVertex2f(0, 1)
+            glEnd()
+            glEnable(GL_DEPTH_TEST)
+            glClear(GL_DEPTH_BUFFER_BIT)
+            glMatrixMode(GL_PROJECTION)
+            glLoadIdentity()
+            halfExtent = isoZoom * 1.25
+            glOrtho(-halfExtent, halfExtent, -halfExtent, halfExtent, -halfExtent * 4.0, halfExtent * 4.0)
+            glMatrixMode(GL_MODELVIEW)
+
+            # CYLINDER RENDERING
+            glLoadIdentity()
+            minimapCameraDirection = isoZoom * 2.8 * np.array([1.0, 1.0, 1.0], dtype=float) * np.sqrt(2) / 2.0
+            xOrigin, yOrigin, zOrigin = float(plotOrigin[0]), float(plotOrigin[1]), float(plotOrigin[2])
+            gluLookAt(xOrigin + minimapCameraDirection[0], yOrigin + minimapCameraDirection[1], zOrigin + minimapCameraDirection[2], xOrigin, yOrigin, zOrigin, 0.0, 0.0, 1.0)
+            glDisable(GL_LIGHTING)
+            nbSegments = max(int(cylinderSegments), 8)
+            glUseProgram(0)
+            glLineWidth(1.0)
+            glColor4f(0.50, 0.60, 0.70, 0.85)
+            glBegin(GL_LINES)
+            for i in range(nbSegments):
+                firstCircleAngle = 2.0 * np.pi * i / nbSegments
+                secondCircleAngle = 2.0 * np.pi * ((i + 1) % nbSegments) / nbSegments
+                xFirstCircleAngle, yFirstCircleAngle = cylinderRadius * np.cos(firstCircleAngle), cylinderRadius * np.sin(firstCircleAngle)
+                xSecondCircleAngle, ySecondCircleAngle = cylinderRadius * np.cos(secondCircleAngle), cylinderRadius * np.sin(secondCircleAngle)
+                glVertex3f(xFirstCircleAngle, yFirstCircleAngle, -halfHeight)
+                glVertex3f(xSecondCircleAngle, ySecondCircleAngle, -halfHeight)
+                glVertex3f(xFirstCircleAngle, yFirstCircleAngle, halfHeight)
+                glVertex3f(xSecondCircleAngle, ySecondCircleAngle, halfHeight)
+            for angle in (-np.pi / 4.0, 3.0 * np.pi / 4.0):
+                xEdge, yEdge = cylinderRadius * np.cos(angle), cylinderRadius * np.sin(angle)
+                glVertex3f(xEdge, yEdge, -halfHeight)
+                glVertex3f(xEdge, yEdge, halfHeight)
+            glEnd()
+
+            # PARTICLE & CAMERA POSITION / DIRECTION CONE RENDERING
+            particlesRenderer.renderAll(pointSize=2.0, refDistance=max(isoZoom, 1.0), minSize=1.0, maxSize=4.0)
+            glUseProgram(0)
+            glEnable(GL_POINT_SMOOTH)
+            glPointSize(8.0)
+            glColor4f(0.3, 0.95, 1.0, 1.0)
+            glBegin(GL_POINTS)
+            glVertex3f(float(cameraPosition[0]), float(cameraPosition[1]), float(cameraPosition[2]))
+            glEnd()
+            self._drawCameraCone(cameraPosition, lookTarget, halfExtent)
+        finally:
+            glMatrixMode(GL_MODELVIEW)
+            glPopMatrix()
+            glMatrixMode(GL_PROJECTION)
+            glPopMatrix()
+            glViewport(int(previousViewport[0]), int(previousViewport[1]), int(previousViewport[2]), int(previousViewport[3]))
+            if not scissorWasOn:
+                glDisable(GL_SCISSOR_TEST)
+            glMatrixMode(GL_MODELVIEW)
+
+    @staticmethod
+    def _drawCameraCone(cameraPosition: np.ndarray, lookTarget: np.ndarray, halfExtent: float):
+        cameraPosition = np.asarray(cameraPosition, dtype=np.float32).reshape(3)
+        lookTarget = np.asarray(lookTarget, dtype=np.float32).reshape(3)
+        direction = lookTarget - cameraPosition
+        normDirection = float(np.linalg.norm(direction))
+        if normDirection > 1e-6:
+            direction = direction / normDirection
+        else:
+            direction = np.array([0.0, 0.0, -1.0], dtype=np.float32)
+        coneLength, coneRadius = halfExtent * 0.24, halfExtent * 0.15
+        coneTipPosition, baseCenter = cameraPosition, cameraPosition + direction * coneLength
+        upDirection = np.array([0.0, 0.0, 1.0], dtype=np.float32)
+        if abs(float(np.dot(direction, upDirection))) > 0.9:
+            upDirection = np.array([0.0, 1.0, 0.0], dtype=np.float32)
+        sideDirection = np.cross(direction, upDirection)
+        sideDirection /= max(float(np.linalg.norm(sideDirection)), 1e-6)
+        upDirection = np.cross(sideDirection, direction)
+        upDirection /= max(float(np.linalg.norm(upDirection)), 1e-6)
+        nbSegments = 16
+        basePoints = []
+        for i in range(nbSegments):
+            angle = 2.0 * np.pi * i / nbSegments
+            offset = (np.cos(angle) * sideDirection + np.sin(angle) * upDirection) * coneRadius
+            basePoints.append(baseCenter + offset)
+        glUseProgram(0)
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glDisable(GL_CULL_FACE)
+        glDepthMask(GL_FALSE)
+        glColor4f(0.25, 0.75, 1.0, 0.05)
+        glBegin(GL_TRIANGLES)
+        for i in range(nbSegments):
+            segmentFirstPoint, segmentSecondPoint = basePoints[i], basePoints[(i + 1) % nbSegments]
+            glVertex3f(float(coneTipPosition[0]), float(coneTipPosition[1]), float(coneTipPosition[2]))
+            glVertex3f(float(segmentFirstPoint[0]), float(segmentFirstPoint[1]), float(segmentFirstPoint[2]))
+            glVertex3f(float(segmentSecondPoint[0]), float(segmentSecondPoint[1]), float(segmentSecondPoint[2]))
+        for i in range(1, nbSegments - 1):
+            triangleFirstPoint, triangleSecondPoint, triangleThirdPoint = basePoints[0], basePoints[i], basePoints[i + 1]
+            glVertex3f(float(triangleFirstPoint[0]), float(triangleFirstPoint[1]), float(triangleFirstPoint[2]))
+            glVertex3f(float(triangleSecondPoint[0]), float(triangleSecondPoint[1]), float(triangleSecondPoint[2]))
+            glVertex3f(float(triangleThirdPoint[0]), float(triangleThirdPoint[1]), float(triangleThirdPoint[2]))
+        glEnd()
+        glColor4f(0.35, 0.85, 1.0, 0.50)
+        glLineWidth(1.5)
+        glBegin(GL_LINE_LOOP)
+        for point in basePoints:
+            glVertex3f(float(point[0]), float(point[1]), float(point[2]))
+        glEnd()
+        glBegin(GL_LINES)
+        glColor4f(0.35, 0.85, 1.0, 0.15)
+        for point in basePoints[:: max(nbSegments // 8, 1)]:
+            glVertex3f(float(coneTipPosition[0]), float(coneTipPosition[1]), float(coneTipPosition[2]))
+            glVertex3f(float(point[0]), float(point[1]), float(point[2]))
+        glEnd()
+        glDepthMask(GL_TRUE)

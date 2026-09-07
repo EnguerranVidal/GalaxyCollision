@@ -8,7 +8,7 @@ from OpenGL.GL import *
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 from PyQt5.QtWidgets import *
 
-from src.gui.visualizers.renderers import ParticlesRenderer, SinglePointRenderer, VectorFieldRenderer, GridRenderer
+from src.gui.visualizers.renderers import ParticlesRenderer, SinglePointRenderer, VectorFieldRenderer, GridRenderer, MinimapRenderer
 from src.gui.settings import ViewSettings
 from src.gui.solver.general import State
 
@@ -100,6 +100,7 @@ class Universe3dViewWidget(QOpenGLWidget):
         self.particlesRenderer = ParticlesRenderer()
         self.barycenterRenderer = SinglePointRenderer()
         self.selectionRenderer = SinglePointRenderer()
+        self.minimapRenderer = MinimapRenderer()
         self.velocityVectorRenderer = VectorFieldRenderer(color=(0.35, 0.9, 1.0, 0.9))
         self.accelerationVectorRenderer = VectorFieldRenderer(color=(1.0, 0.45, 0.2, 0.9))
         self.velocityVectorVertices = None
@@ -131,6 +132,7 @@ class Universe3dViewWidget(QOpenGLWidget):
         self.particlesRenderer.initialize()
         self.barycenterRenderer.initialize()
         self.selectionRenderer.initialize()
+        self.minimapRenderer.initialize()
         self.velocityVectorRenderer.initialize()
         self.accelerationVectorRenderer.initialize()
         self._updateProjection(max(self.width(), 1), max(self.height(), 1))
@@ -166,6 +168,11 @@ class Universe3dViewWidget(QOpenGLWidget):
                 drawPos = np.asarray(particlePosition, dtype=np.float32)
                 pulse = 1.0 + 0.35 * np.sin(self.pulsePhase)
                 self.selectionRenderer.render(drawPos, pointSize=20.0 * pulse, color=(1.0, 0.95, 0.2, 1.0))
+        if self.viewSettings.showMinimap:
+            self.minimapRenderer.render(widgetWidth=self.width(), widgetHeight=self.height(), devicePixelRatio=float(self.devicePixelRatioF()),
+                sizeLogical=float(getattr(self.viewSettings, "minimapSize", 180.0)), marginLogical=12.0, plotOrigin=self._plotOrigin(),
+                cameraWorld=self._cameraWorldPosition(), lookTarget=self._cameraLookTarget(),
+                isoZoom=self._minimapIsoZoom(), particlesRenderer=self.particlesRenderer)
 
     def updateState(self, state: State):
         self.pendingObjectBufferUpdates.clear()
@@ -309,7 +316,7 @@ class Universe3dViewWidget(QOpenGLWidget):
     def _plotOrigin(self):
         return self.massCenter if self.viewSettings.centerOnBarycenter else np.zeros(3, dtype=np.float32)
 
-    def _gridReferenceDistance(self):
+    def _cameraWorldPosition(self):
         plotOrigin = self._plotOrigin()
         cameraOffset = np.asarray(self.camera.getPosition(), dtype=float)
         if self.focusOnSelectedParticle:
@@ -317,7 +324,25 @@ class Universe3dViewWidget(QOpenGLWidget):
             orbitTarget = np.asarray(particlePosition, dtype=float) if particlePosition is not None else plotOrigin
         else:
             orbitTarget = plotOrigin
-        cameraWorld = orbitTarget + cameraOffset
+        return (orbitTarget + cameraOffset).astype(np.float32)
+
+    def _cameraLookTarget(self):
+        if self.focusOnSelectedParticle:
+            p = self._selectedWorldPosition()
+            if p is not None:
+                return np.asarray(p, dtype=np.float32)
+        return self._plotOrigin()
+
+    def _minimapIsoZoom(self) -> float:
+        plotOrigin = self._plotOrigin()
+        cameraWorld = self._cameraWorldPosition()
+        distance = float(np.linalg.norm(np.asarray(cameraWorld, dtype=float) - np.asarray(plotOrigin, dtype=float)))
+        distance = max(distance, float(self.viewSettings.minimumExtent), 1e-3)
+        return distance * 1.5
+
+    def _gridReferenceDistance(self):
+        plotOrigin = self._plotOrigin()
+        cameraWorld = self._cameraWorldPosition()
         delta = cameraWorld - np.asarray(plotOrigin, dtype=float)
         horizontal = float(np.linalg.norm(delta[:2]))
         return max(horizontal, float(self.viewSettings.minimumExtent))

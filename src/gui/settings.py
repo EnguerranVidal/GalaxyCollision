@@ -48,6 +48,7 @@ class ViewSettings:
             showAccelerationVectors=bool(data.get("SHOW_ACCELERATION_VECTORS", False)),
             accelerationVectorLength=float(data.get("ACCELERATION_VECTOR_LENGTH", 0.25)),
             referenceAcceleration=float(data.get("REFERENCE_ACCELERATION", 1E1)),
+            showMinimap=bool(data.get("SHOW_MINIMAP", False)),
         )
 
     def toDict(self):
@@ -62,6 +63,7 @@ class ViewSettings:
             "SHOW_ACCELERATION_VECTORS": self.showAccelerationVectors,
             "ACCELERATION_VECTOR_LENGTH": self.accelerationVectorLength,
             "REFERENCE_ACCELERATION": self.referenceAcceleration,
+            "SHOW_MINIMAP": self.showMinimap,
         }
 
 
