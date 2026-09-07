@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import argparse
 import shutil
 import subprocess
@@ -16,7 +15,7 @@ def run(cmd: list[str], **kwargs) -> None:
     print('+', ' '.join(cmd))
     subprocess.check_call(cmd, **kwargs)
 
-def findCmake()-> str:
+def findCmake():
     cmake = shutil.which('cmake')
     if cmake:
         return cmake
@@ -36,7 +35,7 @@ def findCmake()-> str:
         'Then open a *new* terminal, conda activate science, and retry.'
     )
 
-def findNinja()-> str | None:
+def findNinja():
     ninja = shutil.which('ninja')
     if ninja:
         return ninja
@@ -49,7 +48,7 @@ def findNinja()-> str | None:
             return str(candidate)
     return None
 
-def findVcVars() -> Path:
+def findVcVars():
     candidates = [Path(r'C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvars64.bat'),
                   Path(r'C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat'),
                   Path(r'C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\Auxiliary\Build\vcvars64.bat'),
@@ -64,7 +63,7 @@ def findVcVars() -> Path:
             return candidate
     raise FileNotFoundError('vcvars64.bat not found. Install VS with \"Desktop development with C++\".')
 
-def runWithMsVc(commandList: list[str]) -> None:
+def runWithMsVc(commandList: list[str]):
     vcVars = findVcVars()
     parts = []
     for command in commandList:
@@ -75,7 +74,7 @@ def runWithMsVc(commandList: list[str]) -> None:
     print("+", full)
     subprocess.check_call(full, shell=True)
 
-def ensurePyBind11()-> str:
+def ensurePyBind11():
     try:
         import pybind11
     except ImportError:
@@ -84,7 +83,7 @@ def ensurePyBind11()-> str:
         import pybind11
     return pybind11.get_cmake_dir()
 
-def findBuiltModule(buildDirectory)-> Path | None:
+def findBuiltModule(buildDirectory):
     preferred = list((buildDirectory / 'python').glob('engine.*'))
     if preferred:
         return preferred[0]
@@ -93,7 +92,7 @@ def findBuiltModule(buildDirectory)-> Path | None:
     return candidates[0] if candidates else None
 
 
-def build(clean: bool = False, withCuda: bool = False)-> int:
+def build(clean: bool = False, withCuda: bool = False):
     print(f'Using Python {sys.version}')
     print(f'Executable: {sys.executable}')
     if '3.10' not in sys.version:
@@ -134,7 +133,7 @@ def build(clean: bool = False, withCuda: bool = False)-> int:
     print('OK — run:  python main.py')
     return 0
 
-def main() -> int:
+def main():
     parser = argparse.ArgumentParser(description='Build GalaxyCollision pybind11 engine module')
     parser.add_argument('--clean', action='store_true', help='Delete the build/ directory before configuring')
     parser.add_argument('--cuda', action='store_true', help='Enable CUDA (needs CUDA Toolkit)')

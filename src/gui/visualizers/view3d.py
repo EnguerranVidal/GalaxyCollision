@@ -333,7 +333,7 @@ class Universe3dViewWidget(QOpenGLWidget):
                 return np.asarray(p, dtype=np.float32)
         return self._plotOrigin()
 
-    def _minimapIsoZoom(self) -> float:
+    def _minimapIsoZoom(self):
         plotOrigin = self._plotOrigin()
         cameraWorld = self._cameraWorldPosition()
         distance = float(np.linalg.norm(np.asarray(cameraWorld, dtype=float) - np.asarray(plotOrigin, dtype=float)))
