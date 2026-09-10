@@ -520,6 +520,7 @@ class MinimapRenderer:
 
             # PARTICLE & CAMERA POSITION / DIRECTION CONE RENDERING
             particlesRenderer.renderAll(pointSize=2.0, refDistance=max(isoZoom, 1.0), minSize=1.0, maxSize=4.0)
+            self._drawCameraGroundMarker(cameraPosition, plotOrigin)
             glUseProgram(0)
             glEnable(GL_POINT_SMOOTH)
             glPointSize(8.0)
@@ -592,5 +593,28 @@ class MinimapRenderer:
         for point in basePoints[:: max(nbSegments // 8, 1)]:
             glVertex3f(float(coneTipPosition[0]), float(coneTipPosition[1]), float(coneTipPosition[2]))
             glVertex3f(float(point[0]), float(point[1]), float(point[2]))
+        glEnd()
+        glDepthMask(GL_TRUE)
+
+    @staticmethod
+    def _drawCameraGroundMarker(cameraPosition: np.ndarray, plotOrigin: np.ndarray):
+        cameraPosition = np.asarray(cameraPosition, dtype=np.float32).reshape(3)
+        plotOrigin = np.asarray(plotOrigin, dtype=np.float32).reshape(3)
+        groundPoint = np.array([cameraPosition[0], cameraPosition[1], plotOrigin[2]], dtype=np.float32)
+        glUseProgram(0)
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glDepthMask(GL_FALSE)
+        glLineWidth(1.0)
+        glColor4f(0.55, 0.85, 1.0, 0.25)
+        glBegin(GL_LINES)
+        glVertex3f(float(groundPoint[0]), float(groundPoint[1]), float(groundPoint[2]))
+        glVertex3f(float(cameraPosition[0]), float(cameraPosition[1]), float(cameraPosition[2]))
+        glEnd()
+        glEnable(GL_POINT_SMOOTH)
+        glPointSize(4.0)
+        glColor4f(0.55, 0.85, 1.0, 0.35)
+        glBegin(GL_POINTS)
+        glVertex3f(float(groundPoint[0]), float(groundPoint[1]), float(groundPoint[2]))
         glEnd()
         glDepthMask(GL_TRUE)
