@@ -7,18 +7,22 @@ from OpenGL.GL.shaders import compileShader
 
 class ParticlesRenderer:
     def __init__(self):
-        self.vaos = {}
-        self.vbos = {}
+        self.positionVaos = {}
+        self.positionVbos = {}
+        self.colorVbos = {}
+        self.colorCapacities = {}
         self.colors = {}
         self.counts = {}
         self.capacities = {}
         self.shader = None
         self.useVaos = False
+        self.useVertexColors = False
         self.locColor = -1
         self.locPointSize = -1
         self.locRefDistance = -1
         self.locMinSize = -1
         self.locMaxSize = -1
+        self.locUseVertexColor = -1
 
     def initialize(self):
         with open("src/assets/shaders/particles/particles.vert") as f:
@@ -31,10 +35,11 @@ class ParticlesRenderer:
         glAttachShader(self.shader, vertexShader)
         glAttachShader(self.shader, fragmentShader)
         glBindAttribLocation(self.shader, 0, "aPos")
+        glBindAttribLocation(self.shader, 1, "aColor")
         glLinkProgram(self.shader)
         if glGetProgramiv(self.shader, GL_LINK_STATUS) != GL_TRUE:
             log = glGetProgramInfoLog(self.shader)
-            raise RuntimeError(f"ParticlesRenderer shader failed to link:\n{log}")
+            raise RuntimeError("ParticlesRenderer link failed:\n" + glGetProgramInfoLog(self.shader).decode("utf-8", errors="replace"))
         glDeleteShader(vertexShader)
         glDeleteShader(fragmentShader)
         self.locColor = glGetUniformLocation(self.shader, "uColor")
@@ -42,37 +47,44 @@ class ParticlesRenderer:
         self.locRefDistance = glGetUniformLocation(self.shader, "uRefDistance")
         self.locMinSize = glGetUniformLocation(self.shader, "uMinSize")
         self.locMaxSize = glGetUniformLocation(self.shader, "uMaxSize")
+        self.locUseVertexColor = glGetUniformLocation(self.shader, "uUseVertexColor")
         self.useVaos = bool(glGenVertexArrays) and bool(glBindVertexArray)
 
     def createGroup(self, groupIndex: str, color: tuple = (1.0, 1.0, 1.0, 0.9)):
-        if groupIndex in self.vbos:
+        if groupIndex in self.positionVbos:
             return
-        self.vbos[groupIndex] = glGenBuffers(1)
+        self.positionVbos[groupIndex] = glGenBuffers(1)
         self.colors[groupIndex] = color
         self.counts[groupIndex] = 0
         self.capacities[groupIndex] = 0
         if self.useVaos:
-            self.vaos[groupIndex] = glGenVertexArrays(1)
-            self._configureVao(self.vaos[groupIndex], self.vbos[groupIndex])
+            self.positionVaos[groupIndex] = glGenVertexArrays(1)
+            self._configureVao(groupIndex)
 
-    @staticmethod
-    def _configureVao(vao, vbo):
+    def _configureVao(self, groupIndex: str):
+        vao, vbo = self.positionVaos[groupIndex], self.positionVbos[groupIndex]
         glBindVertexArray(vao)
         glBindBuffer(GL_ARRAY_BUFFER, vbo)
         glEnableVertexAttribArray(0)
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, None)
+        if groupIndex in self.colorVbos:
+            glBindBuffer(GL_ARRAY_BUFFER, self.colorVbos[groupIndex])
+            glEnableVertexAttribArray(1)
+            glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, None)
+        else:
+            glDisableVertexAttribArray(1)
         glBindBuffer(GL_ARRAY_BUFFER, 0)
         glBindVertexArray(0)
 
     def updateGroupPositions(self, groupIndex: str, positions: np.ndarray):
-        if groupIndex not in self.vbos:
+        if groupIndex not in self.positionVbos:
             self.createGroup(groupIndex)
         positions = np.ascontiguousarray(positions, dtype=np.float32)
         if positions.ndim != 2 or positions.shape[1] != 3:
             raise ValueError("Positions must be Nx3 array")
         nbParticles = positions.shape[0]
         nbBytes = int(positions.nbytes)
-        glBindBuffer(GL_ARRAY_BUFFER, self.vbos[groupIndex])
+        glBindBuffer(GL_ARRAY_BUFFER, self.positionVbos[groupIndex])
         capacity = self.capacities.get(groupIndex, 0)
         if nbBytes > capacity:
             newCapacity = max(nbBytes, int(capacity * 1.5) if capacity else nbBytes)
@@ -84,8 +96,31 @@ class ParticlesRenderer:
         glBindBuffer(GL_ARRAY_BUFFER, 0)
         self.counts[groupIndex] = nbParticles
 
+    def updateGroupColors(self, groupIndex: str, colors: np.ndarray):
+        if groupIndex not in self.positionVbos:
+            self.createGroup(groupIndex)
+        colors = np.ascontiguousarray(colors, dtype=np.float32)
+        if colors.ndim != 2 or colors.shape[1] != 4:
+            raise ValueError("Colors must be Nx4 array")
+        if groupIndex not in self.colorVbos:
+            self.colorVbos[groupIndex] = glGenBuffers(1)
+            self.colorCapacities[groupIndex] = 0
+            if self.useVaos and groupIndex in self.positionVaos:
+                self._configureVao(groupIndex)
+        nbBytes = int(colors.nbytes)
+        glBindBuffer(GL_ARRAY_BUFFER, self.colorVbos[groupIndex])
+        capacity = self.colorCapacities.get(groupIndex, 0)
+        if nbBytes > capacity:
+            newCapacity = max(nbBytes, int(capacity * 1.5) if capacity else nbBytes)
+            glBufferData(GL_ARRAY_BUFFER, newCapacity, None, GL_DYNAMIC_DRAW)
+            self.colorCapacities[groupIndex] = newCapacity
+        else:
+            glBufferData(GL_ARRAY_BUFFER, capacity, None, GL_DYNAMIC_DRAW)
+        glBufferSubData(GL_ARRAY_BUFFER, 0, nbBytes, colors)
+        glBindBuffer(GL_ARRAY_BUFFER, 0)
+
     def renderObjectsGroup(self, groupIndex: str, pointSize: float = 3.0):
-        if groupIndex not in self.vbos or self.counts.get(groupIndex, 0) == 0:
+        if groupIndex not in self.positionVbos or self.counts.get(groupIndex, 0) == 0:
             return
         glUniform4f(self.locColor, *self.colors[groupIndex])
         glUniform1f(self.locPointSize, pointSize)
@@ -105,6 +140,7 @@ class ParticlesRenderer:
         glUniform1f(self.locRefDistance, float(refDistance))
         glUniform1f(self.locMinSize, minSize)
         glUniform1f(self.locMaxSize, maxSize)
+        glUniform1i(self.locUseVertexColor, 1 if self.useVertexColors else 0)
         for groupIndex, count in self.counts.items():
             if count == 0 or groupIndex in skip:
                 continue
@@ -118,26 +154,37 @@ class ParticlesRenderer:
 
     def _bindGroupBuffer(self, groupIndex):
         if self.useVaos:
-            glBindVertexArray(self.vaos[groupIndex])
+            glBindVertexArray(self.positionVaos[groupIndex])
+            if self.useVertexColors and groupIndex in self.colorVbos:
+                pass
         else:
-            glBindBuffer(GL_ARRAY_BUFFER, self.vbos[groupIndex])
+            glBindBuffer(GL_ARRAY_BUFFER, self.positionVbos[groupIndex])
             glEnableVertexAttribArray(0)
             glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, None)
+            if self.useVertexColors and groupIndex in self.colorVbos:
+                glBindBuffer(GL_ARRAY_BUFFER, self.colorVbos[groupIndex])
+                glEnableVertexAttribArray(1)
+                glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, None)
+            else:
+                glDisableVertexAttribArray(1)
 
     def unbindGroupBuffer(self):
         if self.useVaos:
             glBindVertexArray(0)
         else:
             glDisableVertexAttribArray(0)
+            glDisableVertexAttribArray(1)
             glBindBuffer(GL_ARRAY_BUFFER, 0)
 
     def cleanup(self):
-        for vao in self.vaos.values():
+        for vao in self.positionVaos.values():
             glDeleteVertexArrays(1, [vao])
-        for vbo in self.vbos.values():
+        for vbo in self.positionVbos.values():
             glDeleteBuffers(1, [vbo])
-        self.vaos.clear()
-        self.vbos.clear()
+        for vbo in self.colorVbos.values():
+            glDeleteBuffers(1, [vbo])
+        self.positionVaos.clear()
+        self.positionVbos.clear()
         self.colors.clear()
         self.counts.clear()
         self.capacities.clear()

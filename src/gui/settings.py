@@ -33,22 +33,26 @@ class ViewSettings:
     accelerationVectorLength: float = 0.25
     referenceAcceleration: float = 1E1
     showMinimap: bool = False
+    particleColorMode : str = "NONE"
+    colormapName: str = "TURBO"
 
     @classmethod
     def fromDict(cls, data=None):
         data = data or {}
         return cls(
-            minimumExtent=float(data.get("MINIMUM_EXTENT", 1.25)),
-            maximumExtent=float(data.get("MAXIMUM_EXTENT", 5000.0)),
-            showBarycenter=bool(data.get("SHOW_BARYCENTER", False)),
-            centerOnBarycenter=bool(data.get("CENTER_ON_BARYCENTER", False)),
-            showVelocityVectors=bool(data.get("SHOW_VELOCITY_VECTORS", False)),
-            velocityVectorLength=float(data.get("VELOCITY_VECTOR_LENGTH", 0.25)),
-            referenceVelocity=float(data.get("REFERENCE_VELOCITY", 1E1)),
-            showAccelerationVectors=bool(data.get("SHOW_ACCELERATION_VECTORS", False)),
-            accelerationVectorLength=float(data.get("ACCELERATION_VECTOR_LENGTH", 0.25)),
-            referenceAcceleration=float(data.get("REFERENCE_ACCELERATION", 1E1)),
-            showMinimap=bool(data.get("SHOW_MINIMAP", False)),
+            minimumExtent = float(data.get("MINIMUM_EXTENT", 1.25)),
+            maximumExtent = float(data.get("MAXIMUM_EXTENT", 5000.0)),
+            showBarycenter = bool(data.get("SHOW_BARYCENTER", False)),
+            centerOnBarycenter = bool(data.get("CENTER_ON_BARYCENTER", False)),
+            showVelocityVectors = bool(data.get("SHOW_VELOCITY_VECTORS", False)),
+            velocityVectorLength = float(data.get("VELOCITY_VECTOR_LENGTH", 0.25)),
+            referenceVelocity = float(data.get("REFERENCE_VELOCITY", 1E1)),
+            showAccelerationVectors = bool(data.get("SHOW_ACCELERATION_VECTORS", False)),
+            accelerationVectorLength = float(data.get("ACCELERATION_VECTOR_LENGTH", 0.25)),
+            referenceAcceleration = float(data.get("REFERENCE_ACCELERATION", 1E1)),
+            showMinimap = bool(data.get("SHOW_MINIMAP", False)),
+            particleColorMode = str(data.get("COLOR_MODE", "NONE")),
+            colormapName = str(data.get("COLOR_MAP", "TURBO")),
         )
 
     def toDict(self):
@@ -64,6 +68,8 @@ class ViewSettings:
             "ACCELERATION_VECTOR_LENGTH": self.accelerationVectorLength,
             "REFERENCE_ACCELERATION": self.referenceAcceleration,
             "SHOW_MINIMAP": self.showMinimap,
+            "COLOR_MODE": self.particleColorMode,
+            "COLOR_MAP": self.colormapName
         }
 
 

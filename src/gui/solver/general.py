@@ -102,6 +102,7 @@ class NBodySolver(QObject):
                       positions={"default": self._positionsAsArray()},
                       velocities={"default": self._velocitiesAsArray()},
                       accelerations={"default": self._accelerationsAsArray()},
+                      masses={"default": self._massesAsArray()},
                       massCenter=self._massCenterAsArray())
         self.positionsReady.emit(state)
 
@@ -155,4 +156,5 @@ class State:
     positions: Dict[str, np.ndarray] = field(default_factory=dict)
     velocities: Dict[str, np.ndarray] = field(default_factory=dict)
     accelerations: Dict[str, np.ndarray] = field(default_factory=dict)
+    masses: Dict[str, np.ndarray] = field(default_factory=dict)
     massCenter: np.ndarray = field(default_factory=lambda: np.zeros(3, dtype=np.float32))

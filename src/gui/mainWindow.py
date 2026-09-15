@@ -92,6 +92,38 @@ class MainWindow(QMainWindow):
         self.showAccelerationVectorsAction.setChecked(self.settings.view.showAccelerationVectors)
         self.showAccelerationVectorsAction.toggled.connect(self._toggleAccelerationVectors)
         self.showAccelerationVectorsAction.setIconVisibleInMenu(False)
+
+        # PARTICLES COLOR MODES
+        def _makeColorModeAction(label: str, mode: str) -> QAction:
+            colorModeAction = QAction(label, self)
+            colorModeAction.setCheckable(True)
+            colorModeAction.setData(mode)
+            colorModeAction.setChecked(self.settings.view.particleColorMode.upper() == mode)
+            self.colorModeGroup.addAction(colorModeAction)
+            return colorModeAction
+        self.colorModeGroup = QActionGroup(self)
+        self.colorModeGroup.setExclusive(True)
+        self.colorModeNoneAction = _makeColorModeAction("&None (group color)", "NONE")
+        self.colorModeSpeedAction = _makeColorModeAction("&Speed", "SPEED")
+        self.colorModeAccelAction = _makeColorModeAction("&Acceleration", "ACCELERATION")
+        self.colorModeMassAction = _makeColorModeAction("&Mass", "MASS")
+        self.colorModeEnergyAction = _makeColorModeAction("&Kinetic energy", "ENERGY")
+        self.colorModeGroup.triggered.connect(self._onParticleColorMode)
+
+        #PARTCILES COLOR MAP
+        def _makeColormapAction(label: str, name: str) -> QAction:
+            action = QAction(label, self)
+            action.setCheckable(True)
+            action.setData(name)
+            action.setChecked(self.settings.view.colormapName.lower() == name)
+            self.colormapGroup.addAction(action)
+            return action
+        self.colormapGroup = QActionGroup(self)
+        self.colormapGroup.setExclusive(True)
+        self.colormapTurboAction = _makeColormapAction("&Turbo", "turbo")
+        self.colormapViridisAction = _makeColormapAction("&Viridis", "viridis")
+        self.colormapGroup.triggered.connect(self._onColormapName)
+
         # SHOW SIMULATION MINIMAP
         self.showMinimapAction = QAction("&Minimap", self)
         self.showMinimapAction.setCheckable(True)
@@ -127,6 +159,16 @@ class MainWindow(QMainWindow):
         self.viewMenu.addAction(self.showVelocityVectorsAction)
         self.viewMenu.addAction(self.showAccelerationVectorsAction)
         self.viewMenu.addAction(self.showMinimapAction)
+        self.colorsMenu = self.viewMenu.addMenu('&Colors')
+        self.colorModeMenu = self.colorsMenu.addMenu("Color &mode")
+        self.colorModeMenu.addAction(self.colorModeNoneAction)
+        self.colorModeMenu.addAction(self.colorModeSpeedAction)
+        self.colorModeMenu.addAction(self.colorModeAccelAction)
+        self.colorModeMenu.addAction(self.colorModeMassAction)
+        self.colorModeMenu.addAction(self.colorModeEnergyAction)
+        self.colormapMenu = self.colorsMenu.addMenu("Color &map")
+        self.colormapMenu.addAction(self.colormapTurboAction)
+        self.colormapMenu.addAction(self.colormapViridisAction)
         ### HELP MENU ###
         self.helpMenu = self.menuBar.addMenu('&Help')
         self.helpMenu.addAction(self.githubAction)
@@ -247,6 +289,18 @@ class MainWindow(QMainWindow):
 
     def _toggleMinimap(self, checked: bool):
         self.settings.view.showMinimap = checked
+        self.simulation3dWidget.setViewSettings(copy.deepcopy(self.settings.view))
+        self.saveSettings()
+
+    def _onParticleColorMode(self, action: QAction):
+        colorMode = str(action.data() or "NONE").upper()
+        self.settings.view.particleColorMode = colorMode
+        self.simulation3dWidget.setViewSettings(copy.deepcopy(self.settings.view))
+        self.saveSettings()
+
+    def _onColormapName(self, action: QAction):
+        colorMapName = str(action.data() or "turbo").lower()
+        self.settings.view.colormapName = colorMapName
         self.simulation3dWidget.setViewSettings(copy.deepcopy(self.settings.view))
         self.saveSettings()
 
