@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from dataclasses import dataclass, field
 from typing import Dict
 import time
@@ -6,8 +7,8 @@ import numpy as np
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
 
 import engine
-from src.gui.solver.parameters import *
-from src.gui.solver.distributions import *
+from src.gui.solver.parameters import SolverParameters
+from src.gui.solver.distributions import generate
 
 
 class NBodySolver(QObject):
@@ -77,6 +78,7 @@ class NBodySolver(QObject):
                                   positions={"default": self._positionsAsArray()},
                                   velocities={"default": self._velocitiesAsArray()},
                                   accelerations={"default": self._accelerationsAsArray()},
+                                  masses={"default": self._massesAsArray()},
                                   massCenter=self._massCenterAsArray())
                     self.positionsReady.emit(state)
                     nextFrame = now + self.frameInterval

@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 import numpy as np
+from matplotlib import cm
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
 from OpenGL.GL import *
@@ -74,7 +75,7 @@ class Universe3dViewWidget(QOpenGLWidget):
         super().__init__(parent)
         glutInit()
         self.setMouseTracking(True)
-        self.lastPosX, self.lastPosY = 0, 0
+        self.lastPositionX, self.lastPositionY = 0, 0
         self.massCenter = np.zeros(3, dtype=np.float32)
         self.viewSettings = ViewSettings()
         self.camera = Camera(self.viewSettings.minimumExtent, self.viewSettings.maximumExtent)
@@ -83,7 +84,8 @@ class Universe3dViewWidget(QOpenGLWidget):
 
         # PARTICLE SELECTION
         self.selectedParticle = SelectedParticle()
-        self.lastPositions = {}
+        self.lastPositions, self.lastParticleColors = {}, {}
+        self.lastVelocities, self.lastAccelerations, self.lastMasses = {}, {}, {}
         self._pressX, self._pressY = 0, 0
         self._dragged = False
         self._ignoreNextRelease = False
@@ -96,6 +98,7 @@ class Universe3dViewWidget(QOpenGLWidget):
         # RENDERERS AND OBJECT BUFFERS
         self.groupColors = {}
         self.pendingObjectBufferUpdates = {}
+        self.pendingColorUpdates = {}
         self.gridRenderer = GridRenderer(self.viewSettings.minimumExtent, self.viewSettings.maximumExtent)
         self.particlesRenderer = ParticlesRenderer()
         self.barycenterRenderer = SinglePointRenderer()
@@ -165,9 +168,10 @@ class Universe3dViewWidget(QOpenGLWidget):
         if self.selectedParticle.particleIndex is not None:
             particlePosition = self._selectedWorldPosition()
             if particlePosition is not None:
-                drawPos = np.asarray(particlePosition, dtype=np.float32)
+                drawPosition = np.asarray(particlePosition, dtype=np.float32)
                 pulse = 1.0 + 0.35 * np.sin(self.pulsePhase)
-                self.selectionRenderer.render(drawPos, pointSize=20.0 * pulse, color=(1.0, 0.95, 0.2, 1.0))
+                color = self._selectedParticleColor()
+                self.selectionRenderer.render(drawPosition, pointSize=20.0 * pulse, color=color)
         if self.viewSettings.showMinimap:
             self.minimapRenderer.render(widgetWidth=self.width(), widgetHeight=self.height(), devicePixelRatio=float(self.devicePixelRatioF()),
                 sizeLogical=float(getattr(self.viewSettings, "minimapSize", 180.0)), marginLogical=12.0, plotOrigin=self._plotOrigin(),
@@ -183,15 +187,17 @@ class Universe3dViewWidget(QOpenGLWidget):
             if groupIndex not in self.groupColors:
                 self.groupColors[groupIndex] = (0.9, 0.7, 0.3, 0.95)
             self.pendingObjectBufferUpdates[groupIndex] = positionArray
-            if mode != "NONE":
-                scalars = self._particleScalars(state, groupIndex)
-                if scalars is not None:
-                    colors = self.scalarsToColors(scalars)  # later: pass colormapName
-                    # upload when GL context is current (e.g. pending + paintGL)
-                    self.pendingColorUpdates[groupIndex] = colors
+            scalars = self._particleScalars(state, groupIndex)
+            if scalars is not None and mode != "NONE":
+                colors = self.scalarsToColors(scalars, colormapName=getattr(self.viewSettings, "colormapName", "turbo") or "turbo")
+                self.pendingColorUpdates[groupIndex] = colors
+                self.lastParticleColors[groupIndex] = colors
         self.massCenter = np.asarray(state.massCenter, dtype=np.float32).reshape(3)
         # SELECTION UPDATE
         self.lastPositions = {groupIndex: np.ascontiguousarray(positionArray, dtype=np.float32) for groupIndex, positionArray in state.positions.items()}
+        self.lastVelocities = {groupName: np.ascontiguousarray(velocities, dtype=np.float32) for groupName, velocities in (state.velocities or {}).items()}
+        self.lastAccelerations = {groupName: np.ascontiguousarray(accelerations, dtype=np.float32) for groupName, accelerations in (state.accelerations or {}).items()}
+        self.lastMasses = {groupName: np.ascontiguousarray(masses, dtype=np.float32) for groupName, masses in (state.masses or {}).items()}
         if self.selectedParticle.particleIndex is not None:
             groupName = self.selectedParticle.particleGroup
             particleIndex = self.selectedParticle.particleIndex
@@ -252,8 +258,7 @@ class Universe3dViewWidget(QOpenGLWidget):
         self._applyExtentLimits()
         if not self.viewSettings.showBarycenter and "barycenter" in self.particlesRenderer.counts:
             self.particlesRenderer.counts["barycenter"] = 0
-        mode = (self.viewSettings.particleColorMode or "NONE").upper()
-        self.particlesRenderer.useVertexColors = (mode != "NONE")
+        self._refreshParticleColors()
         self.update()
 
     def _placeTimeOverlay(self):
@@ -270,16 +275,16 @@ class Universe3dViewWidget(QOpenGLWidget):
         self.update()
 
     def _uploadPendingObjectBuffers(self):
-        if not self.pendingObjectBufferUpdates:
-            return
-        for groupIndex, positions in self.pendingObjectBufferUpdates.items():
-            if groupIndex not in self.particlesRenderer.colors:
-                self.particlesRenderer.createGroup(groupIndex, self.groupColors.get(groupIndex, (1.0, 1.0, 1.0, 0.9)))
-            self.particlesRenderer.updateGroupPositions(groupIndex, positions)
-        self.pendingObjectBufferUpdates.clear()
-        for groupIndex, colors in self.pendingColorUpdates.items():
-            self.particlesRenderer.updateGroupColors(groupIndex, colors)
-        self.pendingColorUpdates.clear()
+        if self.pendingObjectBufferUpdates:
+            for groupIndex, positions in self.pendingObjectBufferUpdates.items():
+                if groupIndex not in self.particlesRenderer.colors:
+                    self.particlesRenderer.createGroup(groupIndex, self.groupColors.get(groupIndex, (1.0, 1.0, 1.0, 0.9)))
+                self.particlesRenderer.updateGroupPositions(groupIndex, positions)
+            self.pendingObjectBufferUpdates.clear()
+        if self.pendingColorUpdates:
+            for groupIndex, colors in self.pendingColorUpdates.items():
+                self.particlesRenderer.updateGroupColors(groupIndex, colors)
+            self.pendingColorUpdates.clear()
 
     def _pickParticle(self, xMouse: int, yMouse: int, maxPixelDistance: float = 15.0):
         if not self.lastPositions:
@@ -361,63 +366,125 @@ class Universe3dViewWidget(QOpenGLWidget):
         return max(horizontal, float(self.viewSettings.minimumExtent))
 
     def _particleScalars(self, state: State, groupIndex: str):
-        mode = self.viewSettings.particleColorMode.upper()
+        colorMode = self.viewSettings.particleColorMode.upper()
         positions = state.positions.get(groupIndex)
-        if mode == "NONE" or positions is None:
+        if colorMode == "NONE" or positions is None:
             return None
         nbParticles = len(positions)
-        if mode == "SPEED":
+        if colorMode == "SPEED":
             velocities = state.velocities.get(groupIndex)
             if velocities is None or len(velocities) != nbParticles:
                 return None
             return np.linalg.norm(velocities, axis=1).astype(np.float32)
-        if mode == "ACCELERATION":
+        if colorMode == "ACCELERATION":
             accelerations = state.accelerations.get(groupIndex)
             if accelerations is None or len(accelerations) != nbParticles:
                 return None
             return np.linalg.norm(accelerations, axis=1).astype(np.float32)
-        if mode == "MASS":
+        if colorMode == "MASS":
             masses = state.masses.get(groupIndex) if hasattr(state, "masses") else None
             if masses is None or len(masses) != nbParticles:
                 return None
             return np.asarray(masses, dtype=np.float32)
-        if mode == "ENERGY":
+        if colorMode == "ENERGY":
             velocities = state.velocities.get(groupIndex)
             masses = state.masses.get(groupIndex) if hasattr(state, "masses") else None
             if velocities is None or masses is None or len(velocities) != nbParticles or len(masses) != nbParticles:
                 return None
-            squaredVelocities = np.sum(velocities * velocities, axis=1)
-            return (0.5 * np.asarray(masses, dtype=np.float32) * squaredVelocities).astype(np.float32)
+            return (0.5 * np.asarray(masses, dtype=np.float32) * np.sum(velocities * velocities, axis=1)).astype(np.float32)
+        return None
+
+    def _particleScalarsFromCache(self, groupIndex: str):
+        colorMode = (self.viewSettings.particleColorMode or "NONE").upper()
+        positions = self.lastPositions.get(groupIndex)
+        if colorMode == "NONE" or positions is None:
+            return None
+        nbParticles = len(positions)
+        if colorMode == "SPEED":
+            velocities = self.lastVelocities.get(groupIndex)
+            if velocities is None or len(velocities) != nbParticles:
+                return None
+            return np.linalg.norm(velocities, axis=1).astype(np.float32)
+        if colorMode == "ACCELERATION":
+            accelerations = self.lastAccelerations.get(groupIndex)
+            if accelerations is None or len(accelerations) != nbParticles:
+                return None
+            return np.linalg.norm(accelerations, axis=1).astype(np.float32)
+        if colorMode == "MASS":
+            masses = self.lastMasses.get(groupIndex)
+            if masses is None or len(masses) != nbParticles:
+                return None
+            return np.asarray(masses, dtype=np.float32)
+        if colorMode == "ENERGY":
+            velocities = self.lastVelocities.get(groupIndex)
+            masses = self.lastMasses.get(groupIndex)
+            if velocities is None or masses is None or len(velocities) != nbParticles or len(masses) != nbParticles:
+                return None
+            return (0.5 * np.asarray(masses, dtype=np.float32) * np.sum(velocities * velocities, axis=1)).astype(np.float32)
         return None
 
     @staticmethod
-    def scalarsToColors(scalars: np.ndarray, alpha: float = 0.95):
-        scalars = np.asarray(scalars, dtype=np.float32)
-        lowValue, highValue = float(np.min(scalars)), float(np.max(scalars))
-        t = np.zeros_like(scalars) if highValue <= lowValue else (scalars - lowValue) / (highValue - lowValue)
-        reds = np.clip(1.5 * t - 0.2, 0.0, 1.0)
-        greens = np.clip(1.5 - np.abs(2.0 * t - 1.0) * 1.2, 0.0, 1.0)
-        blues = np.clip(1.2 - 1.5 * t, 0.0, 1.0)
-        outputColors = np.column_stack([reds, greens, blues, np.full_like(t, alpha)]).astype(np.float32)
+    def scalarsToColors(scalars: np.ndarray, colormapName: str = "turbo", alpha: float = 0.95, lowPercentile: float = 0.0, highPercentile: float = 90.0,):
+        scalars = np.asarray(scalars, dtype=np.float64).reshape(-1)
+        if scalars.size == 0:
+            return np.zeros((0, 4), dtype=np.float32)
+        lowValue, highValue = float(np.percentile(scalars, lowPercentile)), float(np.percentile(scalars, highPercentile))
+        if not np.isfinite(lowValue) or not np.isfinite(highValue) or highValue <= lowValue:
+            lowValue, highValue = float(np.min(scalars)), float(np.max(scalars))
+        t = np.zeros_like(scalars, dtype=np.float64) if highValue <= lowValue else np.clip((scalars - lowValue) / (highValue - lowValue), 0.0, 1.0)
+        colormapName = (colormapName or "turbo").lower()
+        try:
+            colorMap = cm.get_cmap(colormapName)
+        except ValueError:
+            colorMap = cm.get_cmap("turbo")
+        outputColors = np.asarray(colorMap(t), dtype=np.float32)
+        outputColors[:, 3] = alpha
         return outputColors
+
+    def _selectedParticleColor(self):
+        groupName = self.selectedParticle.particleGroup
+        particleIndex = self.selectedParticle.particleIndex
+        if groupName is None or particleIndex is None:
+            colorOutput = (1.0, 0.95, 0.2, 1.0)
+            return colorOutput
+        mode = (self.viewSettings.particleColorMode or "NONE").upper()
+        if mode != "NONE":
+            colors = self.lastParticleColors.get(groupName, [])
+            if colors is not None and 0 <= particleIndex < len(colors):
+                c = colors[particleIndex]
+                colorOutput = (float(c[0]), float(c[1]), float(c[2]), 1.0)
+                return colorOutput
+        return self.groupColors.get(groupName, (1.0, 0.95, 0.2, 1.0))
+
+    def _refreshParticleColors(self):
+        colorMode = (self.viewSettings.particleColorMode or "NONE").upper()
+        self.particlesRenderer.useVertexColors = (colorMode != "NONE")
+        self.pendingColorUpdates.clear()
+        if colorMode == "NONE" or not self.lastPositions:
+            self.lastParticleColors.clear()
+            return
+        colormapName = (getattr(self.viewSettings, "colormapName", "turbo") or "turbo")
+        for groupIndex in self.lastPositions:
+            scalars = self._particleScalarsFromCache(groupIndex)
+            if scalars is None:
+                continue
+            colors = self.scalarsToColors(scalars, colormapName=colormapName)
+            self.pendingColorUpdates[groupIndex] = colors
+            self.lastParticleColors[groupIndex] = colors
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
-            self._pressX = event.x()
-            self._pressY = event.y()
-            self.lastPosX = event.x()
-            self.lastPosY = event.y()
+            self._pressX, self._pressY = event.x(), event.y()
+            self.lastPositionX, self.lastPositionY = event.x(), event.y()
             self._dragged = False
 
     def mouseMoveEvent(self, event):
         if event.buttons() & Qt.LeftButton:
-            dx = event.x() - self.lastPosX
-            dy = event.y() - self.lastPosY
+            dx, dy = event.x() - self.lastPositionX, event.y() - self.lastPositionY
             if abs(event.x() - self._pressX) > 5 or abs(event.y() - self._pressY) > 5:
                 self._dragged = True
             self.camera.rotate(dx, dy)
-            self.lastPosX = event.x()
-            self.lastPosY = event.y()
+            self.lastPositionX, self.lastPositionY = event.x(), event.y()
             self.update()
             self.cameraChanged.emit()
 

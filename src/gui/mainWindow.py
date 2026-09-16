@@ -110,7 +110,7 @@ class MainWindow(QMainWindow):
         self.colorModeEnergyAction = _makeColorModeAction("&Kinetic energy", "ENERGY")
         self.colorModeGroup.triggered.connect(self._onParticleColorMode)
 
-        #PARTCILES COLOR MAP
+        # PARTICLES COLOR MAP
         def _makeColormapAction(label: str, name: str) -> QAction:
             action = QAction(label, self)
             action.setCheckable(True)
@@ -122,6 +122,14 @@ class MainWindow(QMainWindow):
         self.colormapGroup.setExclusive(True)
         self.colormapTurboAction = _makeColormapAction("&Turbo", "turbo")
         self.colormapViridisAction = _makeColormapAction("&Viridis", "viridis")
+        self.colormapPlasmaAction = _makeColormapAction("&Plasma", "plasma")
+        self.colormapInfernoAction = _makeColormapAction("&Inferno", "inferno")
+        self.colormapMagmaAction = _makeColormapAction("&Magma", "magma")
+        self.colormapCividisAction = _makeColormapAction("Ci&vidis", "cividis")
+        self.colormapCoolWarmAction = _makeColormapAction("&Cool–Warm", "coolwarm")
+        self.colormapJetAction = _makeColormapAction("&Jet", "jet")
+        self.colormapHotAction = _makeColormapAction("&Hot", "hot")
+        self.colormapRainbowAction = _makeColormapAction("&Rainbow", "rainbow")
         self.colormapGroup.triggered.connect(self._onColormapName)
 
         # SHOW SIMULATION MINIMAP
@@ -169,6 +177,14 @@ class MainWindow(QMainWindow):
         self.colormapMenu = self.colorsMenu.addMenu("Color &map")
         self.colormapMenu.addAction(self.colormapTurboAction)
         self.colormapMenu.addAction(self.colormapViridisAction)
+        self.colormapMenu.addAction(self.colormapPlasmaAction)
+        self.colormapMenu.addAction(self.colormapInfernoAction)
+        self.colormapMenu.addAction(self.colormapMagmaAction)
+        self.colormapMenu.addAction(self.colormapCividisAction)
+        self.colormapMenu.addAction(self.colormapCoolWarmAction)
+        self.colormapMenu.addAction(self.colormapJetAction)
+        self.colormapMenu.addAction(self.colormapHotAction)
+        self.colormapMenu.addAction(self.colormapRainbowAction)
         ### HELP MENU ###
         self.helpMenu = self.menuBar.addMenu('&Help')
         self.helpMenu.addAction(self.githubAction)
