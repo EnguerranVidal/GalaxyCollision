@@ -492,7 +492,8 @@ class MinimapRenderer:
 
     def render(self, widgetWidth: int, widgetHeight: int, devicePixelRatio: float, plotOrigin: np.ndarray,
                cameraWorld: np.ndarray, lookTarget: np.ndarray, isoZoom: float, particlesRenderer,
-               sizeLogical: float = 180.0, marginLogical: float = 12.0, cylinderSegments: int = 48):
+               azimuthAngle: float = 45.0, elevationAngle: float = 20.0, sizeLogical: float = 180.0,
+               marginLogical: float = 12.0, cylinderSegments: int = 48):
         if not self.ready:
             return
         ratio = float(devicePixelRatio)
@@ -541,7 +542,8 @@ class MinimapRenderer:
 
             # CYLINDER RENDERING
             glLoadIdentity()
-            minimapCameraDirection = isoZoom * 2.8 * np.array([1.0, 1.0, 1.0], dtype=float) * np.sqrt(2) / 2.0
+            azimuth, elevation = np.deg2rad(azimuthAngle), np.deg2rad(elevationAngle)
+            minimapCameraDirection = isoZoom * 2.8 * np.array([np.cos(elevation) * np.cos(azimuth), np.cos(elevation) * np.sin(azimuth), np.sin(elevation)], dtype=float)
             xOrigin, yOrigin, zOrigin = float(plotOrigin[0]), float(plotOrigin[1]), float(plotOrigin[2])
             gluLookAt(xOrigin + minimapCameraDirection[0], yOrigin + minimapCameraDirection[1], zOrigin + minimapCameraDirection[2], xOrigin, yOrigin, zOrigin, 0.0, 0.0, 1.0)
             glDisable(GL_LIGHTING)

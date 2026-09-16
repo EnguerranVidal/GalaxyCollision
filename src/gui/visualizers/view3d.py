@@ -175,8 +175,8 @@ class Universe3dViewWidget(QOpenGLWidget):
         if self.viewSettings.showMinimap:
             self.minimapRenderer.render(widgetWidth=self.width(), widgetHeight=self.height(), devicePixelRatio=float(self.devicePixelRatioF()),
                 sizeLogical=float(getattr(self.viewSettings, "minimapSize", 180.0)), marginLogical=12.0, plotOrigin=self._plotOrigin(),
-                cameraWorld=self._cameraWorldPosition(), lookTarget=self._cameraLookTarget(),
-                isoZoom=self._minimapIsoZoom(), particlesRenderer=self.particlesRenderer)
+                cameraWorld=self._cameraWorldPosition(), lookTarget=self._cameraLookTarget(), isoZoom=self._minimapIsoZoom(), particlesRenderer=self.particlesRenderer,
+                azimuthAngle=float(self.viewSettings.minimapAzimuthAngle), elevationAngle=float(self.viewSettings.minimapElevationAngle))
 
     def updateState(self, state: State):
         self.pendingObjectBufferUpdates.clear()

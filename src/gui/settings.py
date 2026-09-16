@@ -33,6 +33,8 @@ class ViewSettings:
     accelerationVectorLength: float = 0.25
     referenceAcceleration: float = 1E1
     showMinimap: bool = False
+    minimapAzimuthAngle: float = 45.0
+    minimapElevationAngle: float = 20.0
     particleColorMode : str = "NONE"
     colormapName: str = "TURBO"
 
@@ -51,6 +53,8 @@ class ViewSettings:
             accelerationVectorLength = float(data.get("ACCELERATION_VECTOR_LENGTH", 0.25)),
             referenceAcceleration = float(data.get("REFERENCE_ACCELERATION", 1E1)),
             showMinimap = bool(data.get("SHOW_MINIMAP", False)),
+            minimapAzimuthAngle=float(data.get("MINIMAP_AZIMUTH_ANGLE", 45.0)),
+            minimapElevationAngle=float(data.get("MINIMAP_ELEVATION_ANGLE", 20.0)),
             particleColorMode = str(data.get("COLOR_MODE", "NONE")),
             colormapName = str(data.get("COLOR_MAP", "TURBO")),
         )
@@ -68,6 +72,8 @@ class ViewSettings:
             "ACCELERATION_VECTOR_LENGTH": self.accelerationVectorLength,
             "REFERENCE_ACCELERATION": self.referenceAcceleration,
             "SHOW_MINIMAP": self.showMinimap,
+            "MINIMAP_AZIMUTH_ANGLE": self.minimapAzimuthAngle,
+            "MINIMAP_ELEVATION_ANGLE": self.minimapElevationAngle,
             "COLOR_MODE": self.particleColorMode,
             "COLOR_MAP": self.colormapName
         }
