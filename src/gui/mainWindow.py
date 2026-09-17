@@ -62,6 +62,11 @@ class MainWindow(QMainWindow):
         self.pausePlayAction.setShortcut(Qt.Key_Space)
         self.pausePlayAction.toggled.connect(self._togglePausePlay)
         self.pausePlayAction.setEnabled(False)
+        # SHOW VIEW GRID
+        self.showGridAction = QAction("&Grid", self)
+        self.showGridAction.setCheckable(True)
+        self.showGridAction.setChecked(self.settings.view.showGrid)
+        self.showGridAction.toggled.connect(self._toggleGrid)
         # SHOW BARYCENTER
         self.showBarycenterAction = QAction('&Barycenter', self)
         self.showBarycenterAction.setIcon(self.icons['CENTER_GRAVITY'])
@@ -161,6 +166,7 @@ class MainWindow(QMainWindow):
         self.viewMenu = self.menuBar.addMenu('&View')
         self.viewMenu.addAction(self.pausePlayAction)
         self.viewMenu.addSeparator()
+        self.viewMenu.addAction(self.showGridAction)
         self.viewMenu.addAction(self.showBarycenterAction)
         self.viewMenu.addAction(self.centerOnBarycenterAction)
         self.viewMenu.addSeparator()
@@ -282,6 +288,11 @@ class MainWindow(QMainWindow):
             self.pausePlayAction.setText("&Pause")
             self.pausePlayAction.setStatusTip("Pause the simulation")
             self.nBodySolver.isPaused = False
+
+    def _toggleGrid(self, checked: bool):
+        self.settings.view.showGrid = checked
+        self.simulation3dWidget.setViewSettings(copy.deepcopy(self.settings.view))
+        self.saveSettings()
 
     def _toggleBarycenter(self, checked: bool):
         self.settings.view.showBarycenter = checked

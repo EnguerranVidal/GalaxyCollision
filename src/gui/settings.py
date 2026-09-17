@@ -22,6 +22,7 @@ class WindowSettings:
 
 @dataclass
 class ViewSettings:
+    showGrid : bool = True
     minimumExtent: float = 1.25
     maximumExtent: float = 10000.0
     showBarycenter: bool = False
@@ -42,6 +43,7 @@ class ViewSettings:
     def fromDict(cls, data=None):
         data = data or {}
         return cls(
+            showGrid=bool(data.get("SHOW_GRID", True)),
             minimumExtent = float(data.get("MINIMUM_EXTENT", 1.25)),
             maximumExtent = float(data.get("MAXIMUM_EXTENT", 5000.0)),
             showBarycenter = bool(data.get("SHOW_BARYCENTER", False)),
@@ -61,6 +63,7 @@ class ViewSettings:
 
     def toDict(self):
         return {
+            "SHOW_GRID": self.showGrid,
             "MINIMUM_EXTENT": self.minimumExtent,
             "MAXIMUM_EXTENT": self.maximumExtent,
             "SHOW_BARYCENTER": self.showBarycenter,

@@ -151,8 +151,9 @@ class Universe3dViewWidget(QOpenGLWidget):
             if particlePosition is not None:
                 glTranslatef(-float(particlePosition[0]- plotOrigin[0]), -float(particlePosition[1] - plotOrigin[1]), -float(particlePosition[2] - plotOrigin[2]))
         # GRID SCALING & RENDERING
-        gridScale = max(self.camera.zoom, self._gridReferenceDistance())
-        self.gridRenderer.render(gridScale)
+        if self.viewSettings.showGrid:
+            gridScale = max(self.camera.zoom, self._gridReferenceDistance())
+            self.gridRenderer.render(gridScale)
         # PARTICLE & BARYCENTER RENDERING
         glTranslatef(-float(plotOrigin[0]),  -float(plotOrigin[1]), -float(plotOrigin[2]))
         glDisable(GL_LIGHTING)
