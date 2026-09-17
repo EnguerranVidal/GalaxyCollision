@@ -132,6 +132,7 @@ class SolverConfigEditorDock(QDockWidget):
         self.calculatorTypeCombo.blockSignals(True)
         self.integratorTypeCombo.blockSignals(True)
         self.deviceCombo.blockSignals(True)
+        self.numParticles.blockSignals(True)
         self.gravitationalConstantSpin.blockSignals(True)
         self.timeStepSpin.blockSignals(True)
         self.thetaValueSpin.blockSignals(True)
@@ -145,6 +146,7 @@ class SolverConfigEditorDock(QDockWidget):
             self._setComboData(self.calculatorTypeCombo, parameters.calculatorType)
             self._setComboData(self.integratorTypeCombo, parameters.integratorType)
             self._setComboData(self.deviceCombo, parameters.device)
+            self.numParticles.setValue(int(parameters.nbParticles))
             self.gravitationalConstantSpin.setValue(parameters.gravitationalConstant)
             self.timeStepSpin.setValue(parameters.timeStep)
             self.thetaValueSpin.setValue(parameters.theta)
@@ -163,6 +165,7 @@ class SolverConfigEditorDock(QDockWidget):
             self.calculatorTypeCombo.blockSignals(False)
             self.integratorTypeCombo.blockSignals(False)
             self.deviceCombo.blockSignals(False)
+            self.numParticles.blockSignals(False)
             self.gravitationalConstantSpin.blockSignals(False)
             self.timeStepSpin.blockSignals(False)
             self.thetaValueSpin.blockSignals(False)
@@ -174,10 +177,11 @@ class SolverConfigEditorDock(QDockWidget):
         self.uiParameters.name = self.nameEdit.text()
         self.uiParameters.distributionType = self.distributionTypeCombo.currentData()
         seedText = self.seedEdit.text().strip()
-        self.uiParameters.seed = int(seedText) if seedText else None
+        self.uiParameters.seed = int(seedText) if seedText else 0
         self.uiParameters.calculatorType = self.calculatorTypeCombo.currentData()
         self.uiParameters.integratorType = self.integratorTypeCombo.currentData()
         self.uiParameters.device = self.deviceCombo.currentData()
+        self.uiParameters.nbParticles = int(self.numParticles.value())
         self.uiParameters.gravitationalConstant = self.gravitationalConstantSpin.value()
         self.uiParameters.timeStep = self.timeStepSpin.value()
         self.uiParameters.theta = self.thetaValueSpin.value()
@@ -212,8 +216,9 @@ class SolverConfigEditorDock(QDockWidget):
         self._onUIChanged()
 
     def _onDistributionTypeChanged(self, text):
-        idx = 0 if text == "Basic" else 1
-        self.distributionEditor.setCurrentIndex(idx)
+        data = self.distributionTypeCombo.currentData()
+        distributionName = (data or "").upper()
+        self.distributionEditor.setCurrentIndex(0 if distributionName == "BASIC" else 1)
         self._onUIChanged()
 
     def getUiParameters(self):
@@ -224,9 +229,18 @@ class SolverConfigEditorDock(QDockWidget):
 
     @staticmethod
     def _setComboData(combo: QComboBox, value):
-        index = combo.findData(value)
-        if index != -1:
-            combo.setCurrentIndex(index)
+        if value is None:
+            return
+        key = str(value).upper()
+        for i in range(combo.count()):
+            data = combo.itemData(i)
+            if data is not None and str(data).upper() == key:
+                combo.setCurrentIndex(i)
+                return
+        for i in range(combo.count()):
+            if combo.itemText(i).upper() == key:
+                combo.setCurrentIndex(i)
+                return
 
 
 class BasicDistributionWidget(QWidget):
@@ -244,30 +258,49 @@ class BasicDistributionWidget(QWidget):
         self.velocityScale.setRange(0.1, 10.0)
         self.velocityScale.setValue(self.parameters.velocityScale)
         self.velocityScale.valueChanged.connect(self.changed.emit)
+        self.massMinimum = QDoubleSpinBox()
+        self.massMinimum.setRange(1e-6, 1e6)
+        self.massMinimum.setDecimals(4)
+        self.massMinimum.setValue(self.parameters.massMinimum)
+        self.massMinimum.valueChanged.connect(self.changed.emit)
+        self.massMaximum = QDoubleSpinBox()
+        self.massMaximum.setRange(1e-6, 1e6)
+        self.massMaximum.setDecimals(4)
+        self.massMaximum.setValue(self.parameters.massMaximum)
+        self.massMaximum.valueChanged.connect(self.changed.emit)
         # MAIN LAYOUT
         group = QGroupBox("Basic Random Distribution Parameters")
         form = QFormLayout(group)
         form.addRow("Position Scale:", self.positionScale)
         form.addRow("Velocity Scale:", self.velocityScale)
+        form.addRow("Mass minimum:", self.massMinimum)
+        form.addRow("Mass maximum:", self.massMaximum)
         mainLayout = QVBoxLayout(self)
         mainLayout.addWidget(group)
 
     def getParameters(self):
         self.parameters.positionScale = self.positionScale.value()
         self.parameters.velocityScale = self.velocityScale.value()
+        self.parameters.massMinimum = self.massMinimum.value()
+        self.parameters.massMaximum = self.massMaximum.value()
         return self.parameters
 
     def syncUIFromParameters(self, parameters: BasicDistributionParameters):
         self.positionScale.blockSignals(True)
         self.velocityScale.blockSignals(True)
+        self.massMinimum.blockSignals(True)
+        self.massMaximum.blockSignals(True)
         try:
             self.positionScale.setValue(parameters.positionScale)
             self.velocityScale.setValue(parameters.velocityScale)
+            self.massMinimum.setValue(parameters.massMinimum)
+            self.massMaximum.setValue(parameters.massMaximum)
             self.parameters = parameters
         finally:
             self.positionScale.blockSignals(False)
             self.velocityScale.blockSignals(False)
-
+            self.massMinimum.blockSignals(False)
+            self.massMaximum.blockSignals(False)
 
 
 class GalaxyDistributionWidget(QWidget):

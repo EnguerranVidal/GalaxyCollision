@@ -146,7 +146,7 @@ class SolverParameters:
     @classmethod
     def fromDict(cls, data: dict):
         data = dict(data)
-        basic = data.get("basicDistributionParameters")
+        basic = data.pop("basicDistributionParameters", None)
         if isinstance(basic, dict):
             data["basicDistributionParameters"] = basic if isinstance(basic, BasicDistributionParameters) else BasicDistributionParameters.fromDict(basic)
         galaxy = data.get("galaxyDistributionParameters")
