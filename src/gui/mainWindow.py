@@ -10,6 +10,7 @@ from PyQt5.QtWidgets import *
 from src.gui.solver.general import NBodySolver, State
 from src.gui.solver.parameters import SolverParameters
 from src.gui.configEditor import SolverConfigEditorDock
+from src.gui.widgets import SimulationTimeBar
 from src.gui.visualizers.view3d import Universe3dViewWidget
 from src.gui.settings import UiSettings
 
@@ -37,10 +38,18 @@ class MainWindow(QMainWindow):
         self.configEditorDock.launchSimulationPressed.connect(self._onLaunchSimulation)
         self.configEditorDock.resetSimulationPressed.connect(self._onResetSimulation)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.configEditorDock)
-        self.stackedSimulationWidget = QStackedWidget()
+
         self.simulation3dWidget = Universe3dViewWidget()
-        self.stackedSimulationWidget.addWidget(self.simulation3dWidget)
-        self.setCentralWidget(self.stackedSimulationWidget)
+        self.timeBar = SimulationTimeBar(currentDirectory=self.currentDir)
+        self.timeBar.pauseToggled.connect(self._onTimeBarPause)
+        self.timeBar.speedChanged.connect(self._onTimeBarSpeed)
+        centerWidget = QWidget()
+        centerLayout = QVBoxLayout(centerWidget)
+        centerLayout.setContentsMargins(0, 0, 0, 0)
+        centerLayout.setSpacing(0)
+        centerLayout.addWidget(self.simulation3dWidget, stretch=1)
+        centerLayout.addWidget(self.timeBar, stretch=0)
+        self.setCentralWidget(centerWidget)
         self.simulation3dWidget.setViewSettings(self.settings.view)
         print("Main thread:", QThread.currentThread())
         print("Simulator thread:", self.nBodySolver.thread())
@@ -228,6 +237,10 @@ class MainWindow(QMainWindow):
         self.pausePlayAction.blockSignals(False)
         self.pausePlayAction.setEnabled(True)
         self.pausePlayAction.setStatusTip("Pause the simulation")
+        self.timeBar.setEnabled(True)
+        self.timeBar.setPaused(False)
+        self.timeBar.setSpeed(getattr(parameters, "simulationSpeed", 1.0))
+        self.timeBar.setSimulationTime(0.0)
         QMetaObject.invokeMethod(self.nBodySolver, "prepareAndRun", Qt.QueuedConnection, Q_ARG(object, parameters))
 
     def _onSimulationFinished(self):
@@ -238,11 +251,13 @@ class MainWindow(QMainWindow):
         self.pausePlayAction.setIcon(self.icons['PAUSE'])
         self.pausePlayAction.setStatusTip("Pause the simulation")
         self.pausePlayAction.blockSignals(False)
+        self.timeBar.setEnabled(False)
 
     def _onPositionsUpdated(self, state: State):
         if self.simulation3dWidget:
             self.simulation3dWidget.updateState(state)
             self._updateFps()
+        self.timeBar.setSimulationTime(state.time)
 
     def _checkEnvironment(self):
         if not os.path.exists(self.settingsPath):
@@ -276,18 +291,32 @@ class MainWindow(QMainWindow):
         frameGeometry.moveCenter(screenCenter)
         self.move(frameGeometry.topLeft())
 
-    @pyqtSlot(bool)
-    def _togglePausePlay(self, paused: bool):
+    def _onTimeBarPause(self, paused: bool):
+        self.pausePlayAction.blockSignals(True)
+        self.pausePlayAction.setChecked(paused)
+        self.pausePlayAction.setIcon(self.icons["PLAY"] if paused else self.icons["PAUSE"])
+        self.pausePlayAction.setText("&Play" if paused else "&Pause")
+        self.pausePlayAction.blockSignals(False)
         if paused:
-            self.pausePlayAction.setIcon(self.icons['PLAY'])
-            self.pausePlayAction.setText("&Play")
-            self.pausePlayAction.setStatusTip("Resume the simulation")
-            self.nBodySolver.isPaused = True
+            QMetaObject.invokeMethod(self.nBodySolver, "pause", Qt.QueuedConnection)
         else:
-            self.pausePlayAction.setIcon(self.icons['PAUSE'])
+            QMetaObject.invokeMethod(self.nBodySolver, "resume", Qt.QueuedConnection)
+
+    def _onTimeBarSpeed(self, speed: float):
+        self.activeParameters.simulationSpeed = float(speed)
+        self.settings.parameters.simulationSpeed = float(speed)
+        QMetaObject.invokeMethod(self.nBodySolver, "setSimulationSpeed", Qt.QueuedConnection, Q_ARG(float, float(speed)))
+
+    def _togglePausePlay(self, paused: bool):
+        self.timeBar.setPaused(paused)
+        if paused:
+            self.pausePlayAction.setIcon(self.icons["PLAY"])
+            self.pausePlayAction.setText("&Play")
+            QMetaObject.invokeMethod(self.nBodySolver, "pause", Qt.QueuedConnection)
+        else:
+            self.pausePlayAction.setIcon(self.icons["PAUSE"])
             self.pausePlayAction.setText("&Pause")
-            self.pausePlayAction.setStatusTip("Pause the simulation")
-            self.nBodySolver.isPaused = False
+            QMetaObject.invokeMethod(self.nBodySolver, "resume", Qt.QueuedConnection)
 
     def _toggleGrid(self, checked: bool):
         self.settings.view.showGrid = checked

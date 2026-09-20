@@ -109,13 +109,6 @@ class Universe3dViewWidget(QOpenGLWidget):
         self.velocityVectorVertices = None
         self.accelerationVectorVertices = None
 
-        # TIME VALUE OVERLAY
-        self.timeOverlay = QLabel(self)
-        self.timeOverlay.setText("Time: 0.000")
-        self.timeOverlay.setAttribute(Qt.WA_TransparentForMouseEvents, True)
-        self.timeOverlay.adjustSize()
-        self._placeTimeOverlay()
-
     def initializeGL(self):
         glClearColor(0, 0, 0, 1.0)
         glEnable(GL_DEPTH_TEST)
@@ -237,10 +230,6 @@ class Universe3dViewWidget(QOpenGLWidget):
             self.accelerationVectorVertices = np.vstack(chunks) if chunks else None
         else:
             self.accelerationVectorVertices = None
-        # SIMULATION TIME OVERLAY
-        self.timeOverlay.setText(f"Time: {state.time:.3f}")
-        self.timeOverlay.adjustSize()
-        self._placeTimeOverlay()
         self.update()
 
     def _applyExtentLimits(self):
@@ -261,12 +250,6 @@ class Universe3dViewWidget(QOpenGLWidget):
             self.particlesRenderer.counts["barycenter"] = 0
         self._refreshParticleColors()
         self.update()
-
-    def _placeTimeOverlay(self):
-        margin = 12
-        x, y = self.width() - self.timeOverlay.width() - margin, self.height() - self.timeOverlay.height() - margin
-        self.timeOverlay.move(max(0, x), max(0, y))
-        self.timeOverlay.raise_()
 
     def _onPulseTick(self):
         if self.selectedParticle.particleIndex is None:
@@ -551,4 +534,3 @@ class Universe3dViewWidget(QOpenGLWidget):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        self._placeTimeOverlay()

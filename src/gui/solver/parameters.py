@@ -43,15 +43,6 @@ class BasicDistributionParameters:
         cpp.massMaximum = self.massMaximum
         return cpp
 
-    @classmethod
-    def fromCpp(cls, cpp):
-        return cls(
-            positionScale=cpp.positionScale,
-            velocityScale=cpp.velocityScale,
-            massMinimum=cpp.massMinimum,
-            massMaximum=cpp.massMaximum,
-        )
-
 
 @dataclass
 class GalaxyDistributionParameters:
@@ -109,24 +100,13 @@ class GalaxyDistributionParameters:
         cpp.haloRadius = self.haloRadius
         return cpp
 
-    @classmethod
-    def fromCpp(cls, cpp):
-        return cls(
-            totalMass=cpp.totalMass,
-            radius=cpp.radius,
-            height=cpp.height,
-            bulgeFraction=cpp.bulgeFraction,
-            haloFraction=cpp.haloFraction,
-            velocityDispersion=cpp.velocityDispersion,
-            plummerRadius=cpp.plummerRadius,
-            haloRadius=cpp.haloRadius,
-        )
-
 
 @dataclass
 class SolverParameters:
     name: str = "Untitled Simulation"
     timeStep: float = 5E-3
+    maxFps: float = 60.0
+    simulationSpeed: float = 1.0
     nbParticles: int = 10000
     theta: float = 0.5
     tileSize: int = 32
@@ -149,7 +129,7 @@ class SolverParameters:
         basic = data.pop("basicDistributionParameters", None)
         if isinstance(basic, dict):
             data["basicDistributionParameters"] = basic if isinstance(basic, BasicDistributionParameters) else BasicDistributionParameters.fromDict(basic)
-        galaxy = data.get("galaxyDistributionParameters")
+        galaxy = data.pop("galaxyDistributionParameters", None)
         if isinstance(galaxy, dict):
             data["galaxyDistributionParameters"] = galaxy if isinstance(galaxy, GalaxyDistributionParameters) else GalaxyDistributionParameters.fromDict(galaxy)
         return cls(**data)
@@ -158,6 +138,8 @@ class SolverParameters:
         return {
             "name": self.name,
             "timeStep": self.timeStep,
+            "maxFps": self.maxFps,
+            "simulationSpeed": self.simulationSpeed,
             "nbParticles": self.nbParticles,
             "theta": self.theta,
             "tileSize": self.tileSize,
@@ -181,6 +163,8 @@ class SolverParameters:
         mainEquality = (
                 self.name == other.name and
                 abs(self.timeStep - other.timeStep) < 1e-9 and
+                abs(self.maxFps - other.maxFps) < 1e-9 and
+                abs(self.simulationSpeed - other.simulationSpeed) < 1e-9 and
                 self.nbParticles == other.nbParticles and
                 abs(self.theta - other.theta) < 1e-9 and
                 self.seed == other.seed and
@@ -223,23 +207,3 @@ class SolverParameters:
         else:
             cpp.basicDistributionParameters = self.basicDistributionParameters.toCpp()
         return cpp
-
-    @classmethod
-    def fromCpp(cls, cpp: engine.SolverParameters):
-        return cls(
-            name = cpp.name,
-            timeStep = cpp.timeStep,
-            nbParticles = cpp.nbParticles,
-            theta = cpp.theta,
-            seed = cpp.seed,
-            device = cpp.device,
-            gravitationalConstant = cpp.gravitationalConstant,
-            integratorType = cpp.integratorType,
-            distributionType = cpp.distributionType,
-            calculatorType = cpp.calculatorType,
-            endless = cpp.endless,
-            maxTime = cpp.maxTime,
-            saveResults = cpp.saveResults,
-            galaxyDistributionParameters = cpp.galaxyDistributionParameters.fromCpp(),
-            basicDistributionParameters = cpp.basicDistributionParameters.fromCpp()
-        )

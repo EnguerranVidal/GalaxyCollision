@@ -15,7 +15,7 @@ class NBodySolver(QObject):
     positionsReady = pyqtSignal(object)
     simulationFinished = pyqtSignal()
 
-    MAX_FPS = 120.0
+    MAX_FPS = 60.0
 
     def __init__(self, parameters, parent=None):
         super().__init__(parent)
@@ -27,7 +27,6 @@ class NBodySolver(QObject):
         self.isRunning = False
         self.isPaused = False
         self.simulationTime = 0.0
-        self.frameInterval = 1.0 / self.MAX_FPS
 
     def initialize(self):
         self.cppParameters = self.parameters.toCpp()
@@ -61,35 +60,50 @@ class NBodySolver(QObject):
         self.initialize()
         self.run()
 
+    def _emitState(self):
+        state = State(
+            time=self.simulationTime,
+            positions={"default": self._positionsAsArray()},
+            velocities={"default": self._velocitiesAsArray()},
+            accelerations={"default": self._accelerationsAsArray()},
+            masses={"default": self._massesAsArray()},
+            massCenter=self._massCenterAsArray(),
+        )
+        self.positionsReady.emit(state)
+
     @pyqtSlot()
     def run(self):
         if self.particles is None:
             self.initialize()
-        self.isRunning = True
-        self.isPaused = False
-        nextFrame = time.perf_counter()
+        self.isRunning, self.isPaused = True, False
+        self.simulationTime = 0.0
+        displayTimeStep = self._displayTimeStep()
+        nextDisplayTime = displayTimeStep
+        self._emitState()
         while self.isRunning:
-            if not self.isPaused:
-                self.integrator.step(self.particles, self.calculator)
-                self.simulationTime += self.parameters.timeStep
-                now = time.perf_counter()
-                if now >= nextFrame:
-                    state = State(time=self.simulationTime,
-                                  positions={"default": self._positionsAsArray()},
-                                  velocities={"default": self._velocitiesAsArray()},
-                                  accelerations={"default": self._accelerationsAsArray()},
-                                  masses={"default": self._massesAsArray()},
-                                  massCenter=self._massCenterAsArray())
-                    self.positionsReady.emit(state)
-                    nextFrame = now + self.frameInterval
-                if not self.cppParameters.endless and self.simulationTime >= self.cppParameters.maxTime:
-                    break
-                sleepFor = nextFrame - time.perf_counter()
-                if sleepFor > 0:
-                    time.sleep(sleepFor)
-            else:
+            if self.isPaused:
                 time.sleep(0.01)
-                nextFrame = time.perf_counter()
+                continue
+            wallFrameStart = time.perf_counter()
+            while self.simulationTime < nextDisplayTime and self.isRunning and not self.isPaused:
+                calculationTimeStep = self._calculationTimeStep()
+                remainingTime = nextDisplayTime - self.simulationTime
+                if calculationTimeStep > remainingTime:
+                    calculationTimeStep = remainingTime
+                if calculationTimeStep <= 0.0:
+                    break
+                self.integrator.step(self.particles, self.calculator)
+                self.simulationTime += float(self.parameters.timeStep)
+            if not self.isRunning:
+                break
+            self._emitState()
+            nextDisplayTime += self._displayTimeStep()
+            if not self.cppParameters.endless and self.simulationTime >= self.cppParameters.maxTime:
+                break
+            frameWall = 1.0 / max(float(self.parameters.maxFps), 1e-6)
+            sleepFor = frameWall - (time.perf_counter() - wallFrameStart)
+            if sleepFor > 0.0:
+                time.sleep(sleepFor)
         self.isRunning = False
         self.isPaused = False
         self.simulationFinished.emit()
@@ -150,6 +164,18 @@ class NBodySolver(QObject):
         if not massCenter:
             return np.zeros(3, dtype=np.float32)
         return np.asarray([massCenter.x, massCenter.y, massCenter.z], dtype=np.float32)
+
+    def _displayTimeStep(self):
+        maxFps = max(float(self.parameters.maxFps), 1e-6)
+        simulationSpeed = max(float(self.parameters.simulationSpeed), 0.0)
+        return simulationSpeed / maxFps
+
+    def _calculationTimeStep(self):
+        return self.parameters.timeStep
+
+    @pyqtSlot(float)
+    def setSimulationSpeed(self, speed: float):
+        self.parameters.simulationSpeed = max(float(speed), 0.0)
 
 
 @dataclass
