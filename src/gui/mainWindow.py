@@ -2,6 +2,7 @@ import copy
 import os
 import json
 import time
+from datetime import datetime
 
 from PyQt5.QtCore import QUrl, QTimer, Qt, QThread, Q_ARG, QMetaObject, pyqtSlot, QEventLoop
 from PyQt5.QtGui import QIcon, QDesktopServices
@@ -11,6 +12,7 @@ from src.gui.solver.general import NBodySolver, State
 from src.gui.solver.parameters import SolverParameters
 from src.gui.configEditor import SolverConfigEditorDock
 from src.gui.widgets import SimulationTimeBar
+from src.gui.logger import SessionLogger
 from src.gui.visualizers.view3d import Universe3dViewWidget
 from src.gui.settings import UiSettings
 
@@ -23,6 +25,7 @@ class MainWindow(QMainWindow):
         # FOLDER PATHS & SETTINGS
         self.currentDir = currentDir
         self.settingsPath = os.path.join(self.currentDir, 'settings.json')
+        self.logsPath = os.path.join(self.currentDir, 'logs')
         self._checkEnvironment()
         self.loadSettings()
 
@@ -51,14 +54,15 @@ class MainWindow(QMainWindow):
         centerLayout.addWidget(self.timeBar, stretch=0)
         self.setCentralWidget(centerWidget)
         self.simulation3dWidget.setViewSettings(self.settings.view)
-        print("Main thread:", QThread.currentThread())
-        print("Simulator thread:", self.nBodySolver.thread())
+        self._initializeSessionLogging()
 
         self._createIcons()
         self._createActions()
         self._createMenuBar()
         self._setupStatusBar()
         self._restoreWindow()
+        self.guiLogger.info("MainWindow init complete")
+        self.guiLogger.info(f"session dir: {self.sessionLogsDirectory}")
 
     def _createActions(self):
         # PAUSE/PLAY SIMULATION
@@ -219,10 +223,13 @@ class MainWindow(QMainWindow):
         self.activeParameters = parameters
         self.settings.parameters = parameters
         self.saveSettings()
+        self.guiLogger.info(f"launch requested | n={parameters.nbParticles} | device={parameters.device} | speed={parameters.simulationSpeed} | maxFps={parameters.maxFps}")
         self._restartSimulation(parameters)
 
     @pyqtSlot()
     def _onResetSimulation(self):
+        parameters = self.activeParameters
+        self.guiLogger.info(f"reset requested | n={parameters.nbParticles} | device={parameters.device} | speed={parameters.simulationSpeed} | maxFps={parameters.maxFps}")
         self._restartSimulation(self.activeParameters)
 
     def _restartSimulation(self, parameters: SolverParameters):
@@ -252,11 +259,15 @@ class MainWindow(QMainWindow):
         self.pausePlayAction.setStatusTip("Pause the simulation")
         self.pausePlayAction.blockSignals(False)
         self.timeBar.setEnabled(False)
+        self.guiLogger.info("simulation finished signal")
 
     def _onPositionsUpdated(self, state: State):
+        nbParticles = sum(len(p) for p in (state.positions or {}).values())
+        self.guiLogger.info(f"state received | t={state.time:.6f} | n={nbParticles} | groups={list((state.positions or {}).keys())}")
         if self.simulation3dWidget:
             self.simulation3dWidget.updateState(state)
             self._updateFps()
+        self.guiLogger.info(f"display updated | t={state.time:.6f}")
         self.timeBar.setSimulationTime(state.time)
 
     def _checkEnvironment(self):
@@ -264,6 +275,14 @@ class MainWindow(QMainWindow):
             settings = UiSettings().toDict()
             with open(self.settingsPath, 'w') as f:
                 json.dump(settings, f)
+        os.makedirs(self.logsPath, exist_ok=True)
+
+    def _initializeSessionLogging(self):
+        self.sessionLogsDirectory = os.path.join(self.currentDir, 'logs', datetime.now().strftime("%Y%m%d_%H%M%S"))
+        os.makedirs(self.sessionLogsDirectory, exist_ok=True)
+        self.guiLogger = SessionLogger(os.path.join(self.sessionLogsDirectory, "gui.log"), "GUI")
+        self.nBodySolver.setLogger(SessionLogger(os.path.join(self.sessionLogsDirectory, "solver.log"), "SOLVER"))
+        self.guiLogger.info(f"session start | dir={self.sessionLogsDirectory}")
 
     def loadSettings(self):
         with open(self.settingsPath, 'r') as f:
@@ -271,8 +290,6 @@ class MainWindow(QMainWindow):
         self.settings = UiSettings.fromDict(settings)
 
     def saveSettings(self):
-        if self.settings is None:
-            return
         settings = self.settings.toDict()
         with open(self.settingsPath, "w") as f:
             json.dump(settings, f)
@@ -297,6 +314,7 @@ class MainWindow(QMainWindow):
         self.pausePlayAction.setIcon(self.icons["PLAY"] if paused else self.icons["PAUSE"])
         self.pausePlayAction.setText("&Play" if paused else "&Pause")
         self.pausePlayAction.blockSignals(False)
+        self.guiLogger.info(f"pause toggled | paused={paused}")
         if paused:
             QMetaObject.invokeMethod(self.nBodySolver, "pause", Qt.QueuedConnection)
         else:
@@ -305,6 +323,7 @@ class MainWindow(QMainWindow):
     def _onTimeBarSpeed(self, speed: float):
         self.activeParameters.simulationSpeed = float(speed)
         self.settings.parameters.simulationSpeed = float(speed)
+        self.guiLogger.info(f"speed changed | speed={speed}")
         QMetaObject.invokeMethod(self.nBodySolver, "setSimulationSpeed", Qt.QueuedConnection, Q_ARG(float, float(speed)))
 
     def _togglePausePlay(self, paused: bool):

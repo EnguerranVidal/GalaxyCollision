@@ -12,7 +12,7 @@ class SimulationTimeBar(QWidget):
     def __init__(self, parent=None, currentDirectory:str = ''):
         super().__init__(parent)
         self.iconPath = os.path.join(currentDirectory, 'src/assets/icons')
-        self.allowedSpeeds = [0.25, 0.5, 1, 2]
+        self.allowedSpeeds = [0.1, 0.25, 0.5, 1, 2, 4, 8, 16]
         self.speedIndex = self.allowedSpeeds.index(1)
         self._paused = False
 

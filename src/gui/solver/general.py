@@ -26,6 +26,7 @@ class NBodySolver(QObject):
         self.integrator = None
         self.isRunning = False
         self.isPaused = False
+        self.logger = None
         self.simulationTime = 0.0
 
     def initialize(self):
@@ -34,6 +35,7 @@ class NBodySolver(QObject):
         self.integrator = self._createIntegrator(self.cppParameters)
         self.particles = generate(self.parameters)
         self.simulationTime = 0.0
+        self._log(f"initialize | n={self.particles.getNbParticles()} | calc={self.parameters.calculatorType} | integ={self.parameters.integratorType} | device={self.parameters.device} | dt={self.parameters.timeStep}")
 
     @staticmethod
     def _createCalculator(parameters: engine.SolverParameters):
@@ -79,48 +81,34 @@ class NBodySolver(QObject):
         self.simulationTime = 0.0
         displayTimeStep = self._displayTimeStep()
         nextDisplayTime = displayTimeStep
+        self._log(f"run start | displayDt={self._displayTimeStep():.6g} | speed={self.parameters.simulationSpeed} | maxFps={self.parameters.maxFps}")
+        self._log(f"emit initial state | t={self.simulationTime:.6f}")
         self._emitState()
         while self.isRunning:
             if self.isPaused:
                 time.sleep(0.01)
                 continue
-            wallFrameStart = time.perf_counter()
+            wallStartTime = time.perf_counter()
+            steps, initialTime = 0, self.simulationTime
             while self.simulationTime < nextDisplayTime and self.isRunning and not self.isPaused:
-                calculationTimeStep = self._calculationTimeStep()
-                remainingTime = nextDisplayTime - self.simulationTime
-                if calculationTimeStep > remainingTime:
-                    calculationTimeStep = remainingTime
-                if calculationTimeStep <= 0.0:
-                    break
                 self.integrator.step(self.particles, self.calculator)
                 self.simulationTime += float(self.parameters.timeStep)
+                steps += 1
             if not self.isRunning:
                 break
+            self._log(f"calc window | steps={steps} | t={initialTime:.6f}->{self.simulationTime:.6f} | wallMs={(time.perf_counter() - wallStartTime) * 1000.0:.3f}")
+            self._log(f"emit | t={self.simulationTime:.6f} | steps={steps}")
             self._emitState()
-            nextDisplayTime += self._displayTimeStep()
+            nextDisplayTime = max(nextDisplayTime + self._displayTimeStep(), self.simulationTime)
             if not self.cppParameters.endless and self.simulationTime >= self.cppParameters.maxTime:
                 break
             frameWall = 1.0 / max(float(self.parameters.maxFps), 1e-6)
-            sleepFor = frameWall - (time.perf_counter() - wallFrameStart)
-            if sleepFor > 0.0:
-                time.sleep(sleepFor)
-        self.isRunning = False
-        self.isPaused = False
+            sleepForDuration = frameWall - (time.perf_counter() - wallStartTime)
+            if sleepForDuration > 0.0:
+                time.sleep(sleepForDuration)
+        self.isRunning, self.isPaused = False, False
+        self._log("run end")
         self.simulationFinished.emit()
-
-    @pyqtSlot()
-    def step(self):
-        if self.particles is None:
-            self.initialize()
-        self.integrator.step(self.particles, self.calculator)
-        self.simulationTime += self.cppParameters.timeStep
-        state = State(time=self.simulationTime,
-                      positions={"default": self._positionsAsArray()},
-                      velocities={"default": self._velocitiesAsArray()},
-                      accelerations={"default": self._accelerationsAsArray()},
-                      masses={"default": self._massesAsArray()},
-                      massCenter=self._massCenterAsArray())
-        self.positionsReady.emit(state)
 
     @pyqtSlot()
     def pause(self):
@@ -176,6 +164,13 @@ class NBodySolver(QObject):
     @pyqtSlot(float)
     def setSimulationSpeed(self, speed: float):
         self.parameters.simulationSpeed = max(float(speed), 0.0)
+
+    def setLogger(self, logger):
+        self.logger = logger
+
+    def _log(self, message: str, level: str = "INFO"):
+        if self.logger is not None:
+            self.logger.log(message, level)
 
 
 @dataclass
